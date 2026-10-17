@@ -117,12 +117,12 @@ func _check_speeds_and_auto_pause() -> void:
 func _check_data() -> void:
 	var expected: Array[String] = ["buildings", "events", "items", "loot_tables", "survivors"]
 	var loaded: Array = Data.tables.keys()
-	loaded.sort()
-	_expect("data loader read all 5 JSON files without errors",
-		Data.errors.is_empty() and loaded == expected, "%s, errors %s" % [loaded, Data.errors])
-	var buildings: Variant = Data.table("buildings")
+	_expect("data loader read the 5 spec JSON files without errors",
+		Data.errors.is_empty() and expected.all(func(t: String) -> bool: return loaded.has(t)),
+		"%s, errors %s" % [loaded, Data.errors])
+	var pharmacy: Dictionary = Data.entry("buildings", "pharmacy")
 	_expect("buildings.json holds the pharmacy example",
-		buildings is Array and buildings.size() == 1 and buildings[0]["id"] == "pharmacy")
+		int(pharmacy.get("count", 0)) == 2 and is_equal_approx(float(pharmacy.get("daily_looted_rate", 0.0)), 0.15), str(pharmacy))
 
 
 func _check_architecture() -> void:

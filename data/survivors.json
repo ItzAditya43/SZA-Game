@@ -1,1 +1,21 @@
-[]
+[
+  { "id": "meera",   "name": "Meera",   "profession": "Nurse",            "age": 34, "weight_kg": 58, "role": "starting",
+    "skills": { "scavenging": 4, "medicine": 8, "combat": 3 }, "stress": 45,
+    "jobs": { "day": "treat", "night": "rest" } },
+  { "id": "arjun",   "name": "Arjun",   "profession": "Electrician",      "age": 29, "weight_kg": 70, "role": "starting",
+    "skills": { "scavenging": 6, "medicine": 2, "combat": 5 }, "stress": 40,
+    "jobs": { "day": "fortify", "night": "rest" } },
+  { "id": "farhan",  "name": "Farhan",  "profession": "Mechanic",         "age": 41, "weight_kg": 76, "role": "starting",
+    "skills": { "scavenging": 7, "medicine": 1, "combat": 6 }, "stress": 62,
+    "jobs": { "day": "scavenge", "night": "rest" } },
+  { "id": "lakshmi", "name": "Lakshmi", "profession": "Farmer",           "age": 46, "weight_kg": 62, "role": "starting",
+    "skills": { "scavenging": 5, "medicine": 3, "combat": 4 }, "stress": 35,
+    "jobs": { "day": "cook", "night": "rest" } },
+  { "id": "ravi",    "name": "Ravi",    "profession": "Police constable", "age": 38, "weight_kg": 74, "role": "starting",
+    "skills": { "scavenging": 4, "medicine": 2, "combat": 8 }, "stress": 50,
+    "jobs": { "day": "rest", "night": "guard" } },
+
+  { "id": "kavya",   "name": "Kavya",   "profession": "Teacher",          "age": 27, "weight_kg": 54, "role": "stranger",
+    "skills": { "scavenging": 5, "medicine": 4, "combat": 3 }, "stress": 70,
+    "jobs": { "day": "collect_water", "night": "rest" } }
+]

@@ -1,78 +1,53 @@
-extends Control
-## Clock, speed buttons and the event log. Reads WorldState and TickLoop and
-## listens to EventBus. Its only effect on the simulation is through TickLoop speed
-## calls and the test-event button.
+extends PanelContainer
+## Top bar: clock, date, temperature, phase, speed buttons and utilities status.
+## Reads WorldState and TickLoop and listens to EventBus. Its only effects on the
+## simulation are TickLoop speed calls and the test-event button.
 ## Keys: Space toggles pause, 1/2/3 set 1×/3×/10×, T fires a test event.
 
-const LOG_LINES: int = 20
 const ACTIVE_SPEED_COLOR: Color = Color(1.0, 0.82, 0.3)
 
 var _clock_label: Label
-var _phase_label: Label
+var _weather_label: Label
+var _utilities_label: Label
 var _speed_buttons: Dictionary = {}  # TickLoop.Speed -> Button
-var _log_view: RichTextLabel
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	var margin: MarginContainer = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	for side: String in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
-	add_child(margin)
-
-	var column: VBoxContainer = VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
-	margin.add_child(column)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	add_child(row)
 
 	_clock_label = Label.new()
-	_clock_label.add_theme_font_size_override("font_size", 32)
-	column.add_child(_clock_label)
+	_clock_label.add_theme_font_size_override("font_size", 26)
+	_clock_label.custom_minimum_size = Vector2(230, 0)
+	row.add_child(_clock_label)
 
-	_phase_label = Label.new()
-	_phase_label.add_theme_font_size_override("font_size", 18)
-	column.add_child(_phase_label)
+	_weather_label = Label.new()
+	_weather_label.custom_minimum_size = Vector2(250, 0)
+	row.add_child(_weather_label)
 
-	var buttons: HBoxContainer = HBoxContainer.new()
-	column.add_child(buttons)
 	for speed: TickLoop.Speed in [TickLoop.Speed.PAUSED, TickLoop.Speed.X1, TickLoop.Speed.X3, TickLoop.Speed.X10]:
 		var button: Button = _make_button(TickLoop.SPEED_LABELS[speed])
 		button.toggle_mode = true
 		button.add_theme_color_override("font_pressed_color", ACTIVE_SPEED_COLOR)
 		button.add_theme_color_override("font_hover_pressed_color", ACTIVE_SPEED_COLOR)
 		button.pressed.connect(_on_speed_pressed.bind(speed))
-		buttons.add_child(button)
+		row.add_child(button)
 		_speed_buttons[speed] = button
-	var spacer: Control = Control.new()
-	spacer.custom_minimum_size = Vector2(24, 0)
-	buttons.add_child(spacer)
-	var test_button: Button = _make_button("Fire test event")
+
+	var test_button: Button = _make_button("Test event")
+	test_button.tooltip_text = "Fires a test event on the bus (T)"
 	test_button.pressed.connect(_fire_test_event)
-	buttons.add_child(test_button)
+	row.add_child(test_button)
 
-	var hint: Label = Label.new()
-	hint.text = "Space: pause/resume · 1 / 2 / 3: 1× / 3× / 10× · T: test event"
-	hint.modulate = Color(1, 1, 1, 0.6)
-	column.add_child(hint)
-
-	var log_title: Label = Label.new()
-	log_title.text = "Event log (last %d)" % LOG_LINES
-	column.add_child(log_title)
-
-	_log_view = RichTextLabel.new()
-	_log_view.bbcode_enabled = false
-	_log_view.scroll_following = true
-	_log_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_log_view.focus_mode = Control.FOCUS_NONE
-	var monospace: SystemFont = SystemFont.new()
-	monospace.font_names = PackedStringArray(["monospace"])
-	_log_view.add_theme_font_override("normal_font", monospace)
-	column.add_child(_log_view)
+	_utilities_label = Label.new()
+	_utilities_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_utilities_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(_utilities_label)
 
 	EventBus.event.connect(_on_bus_event)
-	_refresh_clock()
+	_refresh()
 	_refresh_speed()
-	_refresh_log()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -98,7 +73,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _make_button(text: String) -> Button:
 	var button: Button = Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(72, 36)
+	button.custom_minimum_size = Vector2(56, 32)
 	# Keeps Space for pause instead of re-pressing the last clicked button.
 	button.focus_mode = Control.FOCUS_NONE
 	return button
@@ -115,31 +90,28 @@ func _fire_test_event() -> void:
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
-	match event_name:
-		&"tick":
-			_refresh_clock()
-			return
-		&"speed_changed":
-			_refresh_speed()
-		&"run_started":
-			_refresh_clock()
-	_refresh_log()
+	if event_name == &"speed_changed":
+		_refresh_speed()
+	else:
+		_refresh()
 
 
-func _refresh_clock() -> void:
+func _refresh() -> void:
 	_clock_label.text = WorldState.clock_string()
-	_phase_label.text = "Phase: %s" % ("Day" if WorldState.phase() == WorldState.PHASE_DAY else "Night")
+	var climate: Dictionary = WorldState.climate
+	var phase: String = "Day" if WorldState.phase() == WorldState.PHASE_DAY else "Night"
+	_weather_label.text = "%s · %.1f °C · %s" % [climate.get("date", ""), float(climate.get("temperature_c", 0.0)), phase]
+	var infra: Dictionary = WorldState.infrastructure
+	if infra.is_empty():
+		_utilities_label.text = ""
+	else:
+		_utilities_label.text = "Power %s · Water mains %s · Phones %s" % [
+			"on" if infra.get("power_on", false) else "OFF",
+			"on" if infra.get("mains_on", false) else "OFF",
+			"on" if infra.get("phones_on", false) else "OFF"]
 
 
 func _refresh_speed() -> void:
 	for speed: TickLoop.Speed in _speed_buttons:
 		var button: Button = _speed_buttons[speed]
 		button.set_pressed_no_signal(speed == TickLoop.speed)
-
-
-func _refresh_log() -> void:
-	var lines: PackedStringArray = []
-	for entry: Dictionary in EventBus.recent(LOG_LINES):
-		var at_tick: int = entry["tick"]
-		lines.append("t%-6d %s   %-14s %s" % [at_tick, WorldState.clock_string_at(at_tick), entry["name"], entry["payload"]])
-	_log_view.text = "\n".join(lines)

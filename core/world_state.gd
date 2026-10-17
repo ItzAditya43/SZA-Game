@@ -17,11 +17,33 @@ const PHASE_NIGHT: StringName = &"night"
 var run_seed: int = 0
 var tick: int = 0
 
-var survivors: Array = []    # Milestone 2
-var buildings: Array = []    # Milestone 3
-var zones: Array = []        # Milestone 4
-var base: Dictionary = {}    # Milestone 5
-var stores: Dictionary = {}  # Milestone 2
+## One Dictionary per survivor, built from data/survivors.json (see systems/survivors.gd).
+var survivors: Array = []
+## Building instances on the town map, with their remaining loot (systems/town.gd).
+var buildings: Array = []
+## Terrain grid and landmarks of the town map (systems/town.gd).
+var town: Dictionary = {}
+## The 4 x 4 infected zones (systems/infected.gd).
+var zones: Array = []
+## The group's base: building, barricades, alert level (systems/base.gd).
+var base: Dictionary = {}
+## Group stores: item id -> Array of lots {"qty": float, "age_days": float}. See core/stores.gd.
+var stores: Dictionary = {}
+## Air temperature and today's range (systems/time.gd).
+var climate: Dictionary = {}
+## Power, water mains and phones (systems/infrastructure.gd).
+var infrastructure: Dictionary = {}
+## Standing orders the player sets: rations, boiling, generator, guns (systems/resources.gd).
+var policies: Dictionary = {}
+## Decisions waiting for the player. Each: {"id", "kind", "text", "options", ...}.
+var pending_decisions: Array = []
+## One-off facts other systems need to know, e.g. which events have fired.
+var flags: Dictionary = {}
+## Running totals for the end-of-run score.
+var stats: Dictionary = {}
+## {"state": &"running" | &"won" | &"lost", ...} (systems/outcome.gd).
+var outcome: Dictionary = {}
+var next_id: int = 1
 ## Hooks for later prototypes. Both stay empty in Prototype 1.
 var factions: Array = []
 var region: Dictionary = {}
@@ -32,11 +54,49 @@ func reset(new_seed: int) -> void:
 	tick = 0
 	survivors = []
 	buildings = []
+	town = {}
 	zones = []
 	base = {}
 	stores = {}
+	climate = {}
+	infrastructure = {}
+	policies = {}
+	pending_decisions = []
+	flags = {}
+	stats = {}
+	outcome = {"state": &"running"}
+	next_id = 1
 	factions = []
 	region = {}
+
+
+## A fresh id for decisions and other run-scoped records.
+func new_id() -> int:
+	next_id += 1
+	return next_id - 1
+
+
+func survivor(id: String) -> Dictionary:
+	for s: Dictionary in survivors:
+		if s["id"] == id:
+			return s
+	return {}
+
+
+## Survivors still in the group: alive and not gone.
+func group() -> Array:
+	return survivors.filter(func(s: Dictionary) -> bool: return s["status"] == &"ok")
+
+
+func building(id: String) -> Dictionary:
+	for b: Dictionary in buildings:
+		if b["id"] == id:
+			return b
+	return {}
+
+
+func is_running() -> bool:
+	return outcome.get("state", &"running") == &"running"
 
 
 func day() -> int:

@@ -7,6 +7,7 @@ extends Node
 const DATA_DIR: String = "res://data"
 
 var tables: Dictionary = {}
+var _indexes: Dictionary = {}  # table name -> {id: entry}
 ## One message per file that failed to load. Empty when everything loaded.
 var errors: Array[String] = []
 
@@ -17,6 +18,7 @@ func _init() -> void:
 
 func load_all() -> void:
 	tables.clear()
+	_indexes.clear()
 	errors.clear()
 	if not DirAccess.dir_exists_absolute(DATA_DIR):
 		_fail("%s: data folder not found" % DATA_DIR)
@@ -34,6 +36,23 @@ func table(table_name: String) -> Variant:
 		push_error("Data: no table '%s' (expected %s/%s.json)" % [table_name, DATA_DIR, table_name])
 		return null
 	return tables[table_name]
+
+
+## An array table keyed by each entry's "id", built once and cached.
+func index(table_name: String) -> Dictionary:
+	if not _indexes.has(table_name):
+		var by_id: Dictionary = {}
+		var entries: Variant = table(table_name)
+		if entries is Array:
+			for row: Dictionary in entries:
+				by_id[row["id"]] = row
+		_indexes[table_name] = by_id
+	return _indexes[table_name]
+
+
+## One entry of an array table by id, or an empty Dictionary.
+func entry(table_name: String, id: String) -> Dictionary:
+	return index(table_name).get(id, {})
 
 
 func _load_file(path: String) -> void:
