@@ -168,9 +168,8 @@ static func _trip_text(s: Dictionary) -> String:
 	var trip: Dictionary = s["trip"]
 	if trip.is_empty():
 		return "away"
-	var building: Dictionary = WorldState.building(String(trip.get("building", "")))
-	var place: String = building.get("name", "town") if not building.is_empty() else "town"
-	return "%s: %s" % [String(trip.get("leg", "away")).replace("_", " "), place]
+	var legs: Dictionary = {&"out": "heading to", &"search": "searching", &"back": "returning from", &"fill": "ferrying water at"}
+	return "%s %s" % [legs.get(trip.get("leg", &""), "away at"), trip.get("place", "town")]
 
 
 static func _building_name(id: String) -> String:

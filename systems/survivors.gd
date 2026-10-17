@@ -341,8 +341,16 @@ static func _stage_rank(stage: StringName) -> int:
 	return [&"none", &"local", &"fever", &"sepsis"].find(stage)
 
 
+## Known to be carrying the pathogen: wound care no longer changes the outcome,
+## so the group is not asked about it.
+static func _doomed(s: Dictionary) -> bool:
+	return not s["pathogen"].is_empty() and s["pathogen"]["known"]
+
+
 func _ask_about_antibiotics(s: Dictionary, injury: Dictionary) -> void:
 	injury["asked_stage"] = _stage_rank(injury["infection"])
+	if _doomed(s):
+		return
 	var strips: float = Stores.total(WorldState.stores, "antibiotics")
 	var stage_text: Dictionary = {&"local": "is red and swelling", &"fever": "is infected and they have a fever",
 		&"sepsis": "has turned septic"}
@@ -489,6 +497,8 @@ func _daily(s: Dictionary) -> void:
 			injury["infection"] = &"local"
 			injury["infection_h"] = 0.0
 			injury["next_stage_h"] = float(Rng.randi_range(LOCAL_TO_FEVER_H.x, LOCAL_TO_FEVER_H.y))
+			if _doomed(s):
+				continue
 			EventBus.emit_event(&"wound_infected", {"survivor": s["id"],
 				"text": "%s's %s is red, hot and swelling." % [s["name"], Body.visible_wound_type(injury)]})
 	if s["drank_untreated_today"]:

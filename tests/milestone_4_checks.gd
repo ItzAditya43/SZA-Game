@@ -202,6 +202,7 @@ func _check_hidden_bite() -> void:
 		TickLoop.step()
 		if not s["pathogen"]["hidden"]:
 			continue
+		s["stress"] = 50.0  # calm enough not to run off before the fever shows
 		hidden_once = true
 		expect("a hidden bite shows the group a cut, and asks them nothing",
 			Body.visible_wound_type(s["injuries"][0]) == &"cut" and WorldState.pending_decisions.is_empty())

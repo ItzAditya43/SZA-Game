@@ -39,6 +39,31 @@ const SAFE_WATER_ORDER: Array[String] = ["water_boiled", "water_bottled"]
 const FULL_RATION_SHARE: float = 0.9
 ## Stores sit indoors, out of the sun.
 const STORE_SHADE_C: float = 3.0
+## Smaller losses spoil quietly.
+const SPOILAGE_REPORT_KG: float = 1.0
+## A fridge runs while there is power or the generator is on.
+const FRIDGE_C: float = 8.0
+
+# --- Cooking (the cook job) ---
+const COOK_KCAL_PER_HOUR: float = 6000.0
+## Per 1,000 kcal of rice/dal/atta: about 0.55 L of water and 0.1 kg of LPG per kg cooked.
+const COOK_WATER_L_PER_1000_KCAL: float = 0.6
+const COOK_GAS_KG_PER_1000_KCAL: float = 0.03
+## Without gas, materials burn as firewood.
+const COOK_WOOD_PER_1000_KCAL: float = 0.3
+## Cooked meals keep a day, so cook no more than a day ahead.
+const COOKED_STOCK_DAYS: float = 1.0
+## Atta first: it keeps least well.
+const STAPLES: Array[String] = ["atta", "rice", "dal"]
+
+# --- Boiling (the boil_water order) ---
+const BOIL_L_PER_HOUR: float = 40.0
+## Boiling 10 L takes about 0.15 kg of LPG, or one unit of materials burned as firewood
+## (the spec's "1 unit of fuel per 10 litres").
+const BOIL_GAS_KG_PER_10L: float = 0.15
+const BOIL_WOOD_PER_10L: float = 1.0
+## Keep this much safe drinking water per person boiled ahead.
+const SAFE_WATER_TARGET_L: float = 6.0
 
 
 func setup() -> void:
@@ -55,6 +80,9 @@ func tick() -> void:
 	if WorldState.is_new_day():
 		_close_day()
 	_spoil()
+	_cook()
+	if WorldState.tick % 6 == 0:
+		_boil()
 	var meal_time: bool = MEAL_MINUTES.has(minute)
 	for s: Dictionary in WorldState.survivors:
 		if s["status"] != &"ok":
@@ -88,7 +116,7 @@ func _drink(s: Dictionary) -> void:
 			drunk += Stores.take(WorldState.stores, item, wanted - drunk)
 		var boiling: bool = WorldState.policies[&"boil_water"]
 		if drunk < wanted and (not boiling or deficit >= DESPERATE_DEFICIT_L):
-			var untreated: float = Stores.take(WorldState.stores, "water_untreated", wanted - drunk)
+			var untreated: float = _take_untreated(wanted - drunk)
 			if untreated > 0.0:
 				s["drank_untreated_today"] = true
 				drunk += untreated
@@ -122,11 +150,99 @@ func _eat(s: Dictionary, meals: int) -> void:
 	s["kcal_eaten_today"] = float(s["kcal_eaten_today"]) + eaten
 
 
+## Untreated water: stored first, then the base building's own tank.
+func _take_untreated(litres: float) -> float:
+	var got: float = Stores.take(WorldState.stores, "water_untreated", litres)
+	var tank: Dictionary = WorldState.building(String(WorldState.base.get("building", "")))
+	if got < litres and not tank.is_empty() and not WorldState.infrastructure.get("mains_on", false):
+		var from_tank: float = minf(litres - got, float(tank["tank_l"]))
+		tank["tank_l"] = float(tank["tank_l"]) - from_tank
+		got += from_tank
+	return got
+
+
+## Stored water plus the base tank, all needing boiling.
+func _untreated_available() -> float:
+	var tank: Dictionary = WorldState.building(String(WorldState.base.get("building", "")))
+	var in_tank: float = 0.0 if tank.is_empty() or WorldState.infrastructure.get("mains_on", false) else float(tank["tank_l"])
+	return Stores.total(WorldState.stores, "water_untreated") + in_tank
+
+
+## Takes fuel for a fire: LPG by the kg first, then materials as firewood.
+## Returns the share of the job the fuel covers (0..1).
+func _burn(gas_kg: float, wood_units: float) -> float:
+	var gas: float = Stores.take(WorldState.stores, "cooking_gas", gas_kg)
+	var share: float = gas / gas_kg if gas_kg > 0.0 else 1.0
+	if share < 1.0:
+		var wood: float = Stores.take(WorldState.stores, "materials", wood_units * (1.0 - share))
+		share += wood / wood_units if wood_units > 0.0 else 0.0
+	return clampf(share, 0.0, 1.0)
+
+
+@warning_ignore("integer_division")
+func _cook() -> void:
+	var group_size: int = WorldState.group().size()
+	for s: Dictionary in WorldState.group():
+		if s["location"] != &"base" or s["job_now"] != &"cook" or s["activity"] != &"light_work":
+			continue
+		var target: float = FOOD_RATIONS[&"full"] * group_size * COOKED_STOCK_DAYS - Stores.total(WorldState.stores, "cooked_meal")
+		var kcal: float = minf(COOK_KCAL_PER_HOUR * Body.work_speed(s) / 6.0, target)
+		var staples: float = 0.0
+		for item: String in STAPLES:
+			staples += Stores.total(WorldState.stores, item)
+		kcal = minf(kcal, staples)
+		if kcal <= 1.0:
+			continue
+		var water_needed: float = kcal / 1000.0 * COOK_WATER_L_PER_1000_KCAL
+		var water: float = _take_untreated(water_needed)
+		for item: String in ["water_boiled", "water_bottled"]:
+			water += Stores.take(WorldState.stores, item, water_needed - water)
+		kcal *= water / water_needed
+		var fuel_share: float = _burn(kcal / 1000.0 * COOK_GAS_KG_PER_1000_KCAL, kcal / 1000.0 * COOK_WOOD_PER_1000_KCAL)
+		kcal *= fuel_share
+		if kcal <= 1.0:
+			if int(s.get("cook_warned_shift", -1)) != WorldState.tick / 72:
+				s["cook_warned_shift"] = WorldState.tick / 72
+				EventBus.emit_event(&"job_blocked", {"survivor": s["id"],
+					"text": "%s can't cook: no %s." % [s["name"], "water" if water < water_needed * 0.1 else "gas or firewood"]})
+			continue
+		var cooked: float = 0.0
+		for item: String in STAPLES:
+			cooked += Stores.take(WorldState.stores, item, kcal - cooked)
+		Stores.add(WorldState.stores, "cooked_meal", cooked)
+
+
+## Hourly, under the boil order, anyone awake at base boils water ahead of need.
+func _boil() -> void:
+	if not WorldState.policies[&"boil_water"]:
+		return
+	var awake: bool = WorldState.group().any(func(s: Dictionary) -> bool: return s["location"] == &"base" and not s["asleep"])
+	if not awake:
+		return
+	var target: float = SAFE_WATER_TARGET_L * WorldState.group().size() - Stores.total(WorldState.stores, "water_boiled")
+	var stored_untreated: float = Stores.total(WorldState.stores, "water_untreated")
+	var room: float = Stores.water_capacity_l(WorldState.stores) - Stores.stored_water_l(WorldState.stores) + stored_untreated
+	var litres: float = minf(minf(BOIL_L_PER_HOUR, target), minf(_untreated_available(), room))
+	if litres <= 0.5:
+		return
+	litres *= _burn(litres / 10.0 * BOIL_GAS_KG_PER_10L, litres / 10.0 * BOIL_WOOD_PER_10L)
+	if litres <= 0.5:
+		if int(WorldState.flags.get("boil_warned_day", -1)) != WorldState.day():
+			WorldState.flags["boil_warned_day"] = WorldState.day()
+			EventBus.emit_event(&"boiling_blocked", {"text": "No gas or firewood to boil water. Untreated water means sickness."})
+		return
+	Stores.add(WorldState.stores, "water_boiled", _take_untreated(litres))
+
+
 func _spoil() -> void:
 	var temp: float = float(WorldState.climate.get("temperature_c", 30.0)) - STORE_SHADE_C
-	var spoiled: Dictionary = Stores.age_and_spoil(WorldState.stores, TICK_DAYS, temp)
+	var infra: Dictionary = WorldState.infrastructure
+	var fridge: float = FRIDGE_C if infra.get("power_on", false) or infra.get("generator_running", false) else INF
+	var spoiled: Dictionary = Stores.age_and_spoil(WorldState.stores, TICK_DAYS, temp, fridge)
 	for item: String in spoiled:
 		var row: Dictionary = Data.entry("items", item)
+		if Stores.weight_kg(item, float(spoiled[item])) < SPOILAGE_REPORT_KG:
+			continue
 		EventBus.emit_event(&"food_spoiled", {"item": item, "qty": spoiled[item],
 			"text": "%s spoiled in the heat (%s %s lost)." % [row["name"], _fmt(float(spoiled[item])), row["unit"]]})
 

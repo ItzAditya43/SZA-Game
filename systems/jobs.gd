@@ -47,6 +47,8 @@ const SEARCH_SHARE_BASE: float = 0.35
 const SEARCH_SHARE_PER_SKILL: float = 0.07
 const SEARCH_SHARE_MAX: float = 0.9
 const CARRY_KG: float = 25.0
+## Crumbs are not worth bagging.
+const MIN_PICKUP_KG: float = 0.1
 ## Noise radius in metres: walking and whispering, quiet searching, forcing a door.
 const NOISE_TRAVEL_M: float = 15.0
 const NOISE_SEARCH_M: float = 10.0
@@ -67,10 +69,20 @@ const TRIP_KIT: Dictionary = {"tourniquet": 1.0, "bandages": 1.0}
 const TRIP_WATER_L: float = 1.5
 const TRIP_AMMO: int = 10
 
+# --- Water ---
+## Filling drums from the tap while the mains still run.
+const TAP_FILL_L_PER_H: float = 120.0
+## Ferrying water by hand: two 10-litre jerry cans a round trip, plus time to fill.
+const CANS_L: float = 20.0
+const FILL_HOURS: float = 1.0 / 6.0
+## Leave this much in a tank for whoever else depends on it? No: take what you can.
+const MIN_TANK_L: float = 20.0
+
 
 func setup() -> void:
 	listen(&"command_set_job", _on_set_job)
 	listen(&"encounter", _on_encounter)
+	listen(&"base_moved", _on_base_moved)
 	for s: Dictionary in WorldState.survivors:
 		_place_at_base(s)
 		_schedule(s)
@@ -115,6 +127,8 @@ func _schedule(s: Dictionary) -> void:
 		s["activity"] = &"idle"
 		if in_work_hours() and int(s.get("trip_shift", -1)) != shift_index():
 			_start_scavenge(s, shift)
+	elif job == &"collect_water" and in_work_hours():
+		_collect_water_at_base(s)
 	elif in_work_hours() and JOB_ACTIVITY.has(job):
 		s["activity"] = JOB_ACTIVITY[job]
 		s["outdoors"] = OUTDOOR_JOBS.has(job)
@@ -131,6 +145,98 @@ func _rest(s: Dictionary, shift: StringName) -> void:
 	else:
 		s["asleep"] = float(s["fatigue"]) >= NAP_FATIGUE or float(s["sleep_debt_h"]) >= NAP_SLEEP_DEBT_H
 	s["activity"] = &"sleeping" if s["asleep"] else &"resting"
+
+
+# --- Water ---
+
+## While the taps run, fill containers at base. Once they fail, go out and ferry
+## water from the nearest tank or the canal for the rest of the working hours.
+func _collect_water_at_base(s: Dictionary) -> void:
+	s["activity"] = &"heavy_work"
+	s["outdoors"] = false
+	var room: float = Stores.water_capacity_l(WorldState.stores) - Stores.stored_water_l(WorldState.stores)
+	if room <= 1.0:
+		_warn_once(s, "water_full", "%s has filled every container. Find water drums to store more." % s["name"])
+		s["activity"] = &"idle"
+		return
+	if WorldState.infrastructure.get("mains_on", false):
+		Stores.add(WorldState.stores, "water_boiled", minf(room, TAP_FILL_L_PER_H * Body.work_speed(s) / 6.0))
+		return
+	if int(s.get("trip_shift", -1)) == shift_index():
+		s["activity"] = &"idle"
+		return
+	s["trip_shift"] = shift_index()
+	var source: Dictionary = _nearest_water()
+	if source.is_empty():
+		_warn_once(s, "no_water_source", "%s finds no water to collect." % s["name"])
+		return
+	_begin_trip(s, &"collect_water", source)
+
+
+## The nearest building with water in its tank, or the nearest bank of the canal.
+func _nearest_water() -> Dictionary:
+	var home: Vector2 = Geo.base_center_m()
+	var best: Dictionary = {}
+	var best_distance: float = INF
+	for building: Dictionary in WorldState.buildings:
+		if building["id"] == WorldState.base.get("building", "") or float(building["tank_l"]) < MIN_TANK_L:
+			continue
+		var d: float = Geo.street_distance_m(home, Geo.building_center_m(building))
+		if d < best_distance:
+			best_distance = d
+			best = building
+	var canal: Vector2 = _nearest_canal(home)
+	if canal != Vector2.INF and Geo.street_distance_m(home, canal) < best_distance:
+		var tile: float = Geo.tile_m()
+		return {"id": "canal", "name": "the canal", "x": floori(canal.x / tile), "y": floori(canal.y / tile), "w": 1, "h": 1,
+			"tank_l": INF}
+	return best
+
+
+func _nearest_canal(from: Vector2) -> Vector2:
+	var rows: Array = WorldState.town.get("rows", [])
+	var tile: float = Geo.tile_m()
+	var best: Vector2 = Vector2.INF
+	var best_distance: float = INF
+	for y: int in rows.size():
+		var row: String = rows[y]
+		for x: int in row.length():
+			if row[x] != "~":
+				continue
+			var pos: Vector2 = Vector2((x + 0.5) * tile, (y + 0.5) * tile)
+			var d: float = Geo.street_distance_m(from, pos)
+			if d < best_distance:
+				best_distance = d
+				best = pos
+	return best
+
+
+## Ferrying water: each tick at the source delivers that tick's share of round trips.
+func _ferry_water(s: Dictionary) -> void:
+	var trip: Dictionary = s["trip"]
+	var distance: float = float(trip["distance_m"])
+	var round_trip_h: float = 2.0 * distance / SPEED_OUT_M_PER_H + FILL_HOURS
+	var litres: float = CANS_L / round_trip_h * Body.work_speed(s) / 6.0
+	var room: float = Stores.water_capacity_l(WorldState.stores) - Stores.stored_water_l(WorldState.stores)
+	var source: Dictionary = WorldState.building(String(trip["building"]))
+	if not source.is_empty():
+		litres = minf(litres, float(source["tank_l"]))
+	litres = minf(litres, room)
+	if litres > 0.0:
+		Stores.add(WorldState.stores, "water_untreated", litres)
+		trip["litres"] = float(trip.get("litres", 0.0)) + litres
+		if not source.is_empty():
+			source["tank_l"] = float(source["tank_l"]) - litres
+	var dry: bool = not source.is_empty() and float(source["tank_l"]) < 1.0
+	if not in_work_hours() or room <= 1.0 or dry:
+		_head_back(s)
+
+
+func _warn_once(s: Dictionary, key: String, text: String) -> void:
+	if int(s.get("warned_" + key, -1)) == shift_index():
+		return
+	s["warned_" + key] = shift_index()
+	EventBus.emit_event(&"job_blocked", {"survivor": s["id"], "text": text})
 
 
 # --- Trips ---
@@ -154,8 +260,8 @@ func _begin_trip(s: Dictionary, kind: StringName, target: Dictionary) -> void:
 	var origin: Vector2 = Geo.base_center_m()
 	var dest: Vector2 = Geo.building_center_m(target)
 	s["location"] = &"away"
-	s["trip"] = {"kind": kind, "building": target["id"], "leg": &"out", "origin": origin, "dest": dest,
-		"distance_m": Geo.street_distance_m(origin, dest), "progress_m": 0.0, "work_ticks_left": 0,
+	s["trip"] = {"kind": kind, "building": target["id"], "place": target["name"], "leg": &"out", "origin": origin,
+		"dest": dest, "distance_m": Geo.street_distance_m(origin, dest), "progress_m": 0.0, "work_ticks_left": 0,
 		"started_tick": WorldState.tick}
 	s["job_now"] = kind
 	_continue_trip(s)
@@ -195,6 +301,12 @@ func _continue_trip(s: Dictionary) -> void:
 					_arrive(s)
 				else:
 					_return_home(s)
+		&"fill":
+			s["activity"] = &"heavy_work"
+			s["outdoors"] = true
+			s["exposure"] = {"outdoors": true, "building": "", "noise_m": NOISE_TRAVEL_M,
+				"zone": Geo.zone_index_at(trip["dest"])}
+			_ferry_water(s)
 		&"search":
 			s["activity"] = &"searching"
 			s["outdoors"] = false
@@ -222,6 +334,12 @@ func _arrive(s: Dictionary) -> void:
 	var building: Dictionary = WorldState.building(String(trip["building"]))
 	s["x_m"] = float(trip["dest"].x)
 	s["y_m"] = float(trip["dest"].y)
+	if trip["kind"] == &"move":
+		_finish_move(s)
+		return
+	if trip["kind"] == &"collect_water":
+		trip["leg"] = &"fill"
+		return
 	trip["leg"] = &"search"
 	var hours: float = SEARCH_HOURS * (NIGHT_SEARCH_TIME_MULT if WorldState.phase() == WorldState.PHASE_NIGHT else 1.0)
 	trip["work_ticks_left"] = roundi(hours * 6.0)
@@ -250,7 +368,7 @@ func _take_loot(s: Dictionary) -> void:
 		var qty: float = minf(available, Stores.qty_for_weight(item, room_kg))
 		if String(row["unit"]) in ["count", "rounds", "units"]:
 			qty = floorf(qty)
-		if qty <= Stores.EPSILON:
+		if qty <= Stores.EPSILON or Stores.weight_kg(item, qty) < MIN_PICKUP_KG and not String(row["unit"]) in ["count", "rounds"]:
 			continue
 		Stores.add_lots(s["carried"], item, Stores.take_lots(building["loot"], item, qty))
 		var kg: float = Stores.weight_kg(item, qty)
@@ -279,6 +397,17 @@ func _head_back(s: Dictionary) -> void:
 
 func _return_home(s: Dictionary) -> void:
 	var trip: Dictionary = s["trip"]
+	s["exposure"] = {}
+	if trip["kind"] == &"move":
+		_finish_move(s)
+		return
+	if trip["kind"] == &"collect_water":
+		s["location"] = &"base"
+		s["trip"] = {}
+		_place_at_base(s)
+		EventBus.emit_event(&"water_collected", {"survivor": s["id"], "litres": float(trip.get("litres", 0.0)),
+			"text": "%s ferried %d L of water from %s (needs boiling)." % [s["name"], roundi(float(trip.get("litres", 0.0))), trip["place"]]})
+		return
 	var building: Dictionary = WorldState.building(String(trip["building"]))
 	var summary: Dictionary = Stores.snapshot(s["carried"])
 	var packed: Dictionary = trip.get("packed", {})
@@ -310,6 +439,28 @@ func _on_encounter(payload: Dictionary) -> void:
 	if not payload.get("abort_trip", false) or s["trip"].get("leg", &"") == &"back":
 		return
 	_head_back(s)
+
+
+## The whole group walks to the new base carrying what Base packed for them.
+func _on_base_moved(payload: Dictionary) -> void:
+	var from: Vector2 = Geo.building_center_m(WorldState.building(String(payload["from"])))
+	var target: Dictionary = WorldState.building(String(payload["to"]))
+	var dest: Vector2 = Geo.building_center_m(target)
+	for s: Dictionary in WorldState.group():
+		if s["location"] != &"base":
+			continue
+		s["location"] = &"away"
+		s["trip"] = {"kind": &"move", "building": target["id"], "place": target["name"], "leg": &"out", "origin": from,
+			"dest": dest, "distance_m": Geo.street_distance_m(from, dest), "progress_m": 0.0, "work_ticks_left": 0,
+			"started_tick": WorldState.tick}
+
+
+func _finish_move(s: Dictionary) -> void:
+	s["exposure"] = {}
+	Stores.merge_into(WorldState.stores, s["carried"])
+	s["location"] = &"base"
+	s["trip"] = {}
+	_place_at_base(s)
 
 
 func _carried_kg(s: Dictionary) -> float:

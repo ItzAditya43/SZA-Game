@@ -342,6 +342,4 @@ static func _pick(weights: Dictionary) -> String:
 
 
 static func _place_name(s: Dictionary) -> String:
-	var trip: Dictionary = s["trip"]
-	var building: Dictionary = WorldState.building(String(trip.get("building", "")))
-	return building.get("name", "town") if not building.is_empty() else "the base"
+	return String(s["trip"].get("place", "the base"))

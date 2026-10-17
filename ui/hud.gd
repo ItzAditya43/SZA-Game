@@ -9,6 +9,7 @@ const SurvivorPanel := preload("res://ui/survivor_panel.gd")
 const MapGrid := preload("res://ui/map_grid.gd")
 const BuildingPanel := preload("res://ui/building_panel.gd")
 const DecisionPanel := preload("res://ui/decision_panel.gd")
+const BasePanel := preload("res://ui/base_panel.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
 const LOG_HEIGHT: float = 140.0
@@ -62,6 +63,9 @@ func _ready() -> void:
 	ui_state.building_selected.connect(func(id: String) -> void:
 		if id != "":
 			tabs.current_tab = building_panel.get_index())
+	var base_panel: BasePanel = BasePanel.new()
+	base_panel.name = "Base"
+	tabs.add_child(base_panel)
 	decision_panel = DecisionPanel.new()
 	decision_panel.name = "Decisions"
 	tabs.add_child(decision_panel)

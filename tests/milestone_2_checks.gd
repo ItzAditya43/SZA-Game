@@ -110,16 +110,19 @@ func _check_night_guard_sleep() -> void:
 
 
 func _check_spoilage() -> void:
+	# Nobody to eat it, and no power for the fridge.
 	start(6)
-	Stores.add(WorldState.stores, "water_bottled", 100.0)
-	_set_all_jobs(&"rest", &"rest")
-	# Keep the fresh produce from being eaten: nobody eats while away.
-	for s: Dictionary in WorldState.survivors:
-		s["location"] = &"away"
+	WorldState.survivors.clear()
+	WorldState.infrastructure["power_fail_tick"] = 0
 	TickLoop.run_headless(5 * WorldState.TICKS_PER_DAY)
-	expect("fresh produce spoils within 5 days in April heat", Stores.total(WorldState.stores, "fresh_produce") < 1.0
+	expect("without a fridge, fresh produce spoils within 5 days in April heat", Stores.total(WorldState.stores, "fresh_produce") < 1.0
 		and not events_named(&"food_spoiled").is_empty(), "%.0f kcal left" % Stores.total(WorldState.stores, "fresh_produce"))
 	expect("rice and dal keep", is_equal_approx(Stores.total(WorldState.stores, "rice"), 10000.0))
+	start(6)
+	WorldState.survivors.clear()
+	WorldState.infrastructure["power_fail_tick"] = 100000
+	TickLoop.run_headless(5 * WorldState.TICKS_PER_DAY)
+	expect("with the power on, the fridge keeps it 5 days", is_equal_approx(Stores.total(WorldState.stores, "fresh_produce"), 4000.0))
 
 
 func _check_heat() -> void:
@@ -136,10 +139,16 @@ func _check_heat() -> void:
 	expect("outdoor work in the afternoon heat raises core temperature", peak > 37.3, "peak %.2f °C" % peak)
 
 
+## No water anywhere: stores, taps or the base's own tank. No infected nearby
+## either, so thirst is the only thing that can kill them.
 func _remove_water() -> void:
 	for item: String in ["water_bottled", "water_boiled", "water_untreated"]:
 		WorldState.stores.erase(item)
 	WorldState.infrastructure["mains_on"] = false
+	WorldState.infrastructure["mains_fail_tick"] = 0
+	WorldState.building(WorldState.base["building"])["tank_l"] = 0.0
+	for zone: Dictionary in WorldState.zones:
+		zone["infected"] = 0.0
 
 
 func _set_all_jobs(day_job: StringName, night_job: StringName) -> void:

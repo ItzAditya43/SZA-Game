@@ -8,6 +8,12 @@ const EPSILON: float = 0.0001
 ## Spoilage doubles for every 10 °C above this, and halves for every 10 °C below.
 const SPOILAGE_REFERENCE_C: float = 30.0
 const SPOILAGE_Q10: float = 2.0
+## Only perishables this short-lived go in the fridge.
+const FRIDGE_MAX_SHELF_DAYS: float = 7.0
+## Buckets, pots and jerry cans every group has, before any drums.
+const BASIC_WATER_CONTAINERS_L: float = 200.0
+const DRUM_L: float = 200.0
+const STORED_WATER_ITEMS: Array[String] = ["water_boiled", "water_untreated"]
 
 
 static func total(stores: Dictionary, item: String) -> float:
@@ -93,13 +99,15 @@ static func qty_for_weight(item: String, kg: float) -> float:
 
 ## Ages every perishable lot by `days` at `temp_c` and removes what has spoiled.
 ## Returns item id -> quantity spoiled.
-static func age_and_spoil(stores: Dictionary, days: float, temp_c: float) -> Dictionary:
+## With a working fridge (fridge_c finite), short-lived food keeps at fridge temperature.
+static func age_and_spoil(stores: Dictionary, days: float, temp_c: float, fridge_c: float = INF) -> Dictionary:
 	var spoiled: Dictionary = {}
-	var rate: float = pow(SPOILAGE_Q10, (temp_c - SPOILAGE_REFERENCE_C) / 10.0)
 	for item: String in stores.keys():
 		var shelf_life: float = float(Data.entry("items", item).get("shelf_life_days", 0.0))
 		if shelf_life <= 0.0:
 			continue
+		var chilled: bool = fridge_c < INF and shelf_life <= FRIDGE_MAX_SHELF_DAYS
+		var rate: float = pow(SPOILAGE_Q10, ((fridge_c if chilled else temp_c) - SPOILAGE_REFERENCE_C) / 10.0)
 		var lots: Array = stores[item]
 		for lot: Dictionary in lots:
 			lot["age_days"] = float(lot["age_days"]) + days * rate
@@ -124,3 +132,12 @@ static func food_kcal(stores: Dictionary) -> float:
 		if Data.entry("items", item).get("category", "") == "food":
 			sum += total(stores, item)
 	return sum
+
+
+## Litres of stored (non-bottled) water the group's containers hold.
+static func water_capacity_l(stores: Dictionary) -> float:
+	return BASIC_WATER_CONTAINERS_L + DRUM_L * total(stores, "water_drum")
+
+
+static func stored_water_l(stores: Dictionary) -> float:
+	return total(stores, "water_boiled") + total(stores, "water_untreated")

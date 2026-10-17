@@ -1,6 +1,6 @@
 [
   { "id": "water_bottled",   "name": "Bottled water",      "category": "water",    "unit": "L",     "kg_per_unit": 1.0,     "safe": true },
-  { "id": "water_boiled",    "name": "Boiled water",       "category": "water",    "unit": "L",     "kg_per_unit": 1.0,     "safe": true },
+  { "id": "water_boiled",    "name": "Safe water (boiled or tap)",       "category": "water",    "unit": "L",     "kg_per_unit": 1.0,     "safe": true },
   { "id": "water_untreated", "name": "Untreated water",    "category": "water",    "unit": "L",     "kg_per_unit": 1.0,     "safe": false },
 
   { "id": "rice",            "name": "Rice",               "category": "food",     "unit": "kcal",  "kcal_per_kg": 3600, "shelf_life_days": 365, "needs_cooking": true },
