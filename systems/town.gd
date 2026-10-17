@@ -5,6 +5,7 @@ extends "res://core/sim_system.gd"
 ## and food in it ages and spoils like anywhere else.
 
 const Stores := preload("res://core/stores.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 ## Whole-unit items (antibiotic strips, rifles) are lost one by one, by chance;
 ## bulk items (kcal, litres) lose an exact share.
@@ -52,9 +53,9 @@ func _new_building(row: Dictionary) -> Dictionary:
 		var item: String = entry["item"]
 		var qty: float
 		if _counted(item):
-			qty = float(Rng.randi_range(int(entry["min"]), int(entry["max"])))
+			qty = float(roundi(Rng.randi_range(int(entry["min"]), int(entry["max"])) * Difficulty.mult("loot")))
 		else:
-			qty = lerpf(float(entry["min"]), float(entry["max"]), Rng.randf())
+			qty = lerpf(float(entry["min"]), float(entry["max"]), Rng.randf()) * Difficulty.mult("loot")
 		Stores.add(loot, item, qty)
 	return {
 		"id": String(row["id"]), "type": String(row["type"]), "name": String(row["name"]),
@@ -67,7 +68,7 @@ func _new_building(row: Dictionary) -> Dictionary:
 
 
 func _looted_by_others(building: Dictionary) -> void:
-	var rate: float = float(Data.entry("buildings", String(building["type"]))["daily_looted_rate"])
+	var rate: float = minf(1.0, float(Data.entry("buildings", String(building["type"]))["daily_looted_rate"]) * Difficulty.mult("looted_by_others"))
 	for item: String in Stores.snapshot(building["loot"]):
 		var qty: float = Stores.total(building["loot"], item)
 		var lost: float = 0.0

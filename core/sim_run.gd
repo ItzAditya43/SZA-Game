@@ -4,6 +4,7 @@ extends RefCounted
 ## runner and the tests all start runs through here, so they run the same simulation.
 
 const SimSystem := preload("res://core/sim_system.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 ## Tick order. Time goes first so every later system sees this tick's clock and
 ## temperature. Jobs runs before Infected so encounters roll on this tick's
@@ -22,10 +23,11 @@ const SYSTEM_SCRIPTS: Array[Script] = [
 ]
 
 
-static func start(run_seed: int) -> void:
+static func start(run_seed: int, difficulty_id: String = Difficulty.DEFAULT_ID) -> void:
 	TickLoop.reset()
 	Rng.set_seed(run_seed)
 	WorldState.reset(run_seed)
+	WorldState.difficulty = Difficulty.preset(difficulty_id)
 	EventBus.clear_log()
 	var systems: Array[SimSystem] = []
 	for script: Script in SYSTEM_SCRIPTS:
@@ -34,8 +36,8 @@ static func start(run_seed: int) -> void:
 		TickLoop.register(system)
 	for system: SimSystem in systems:
 		system.setup()
-	EventBus.emit_event(&"run_started", {"seed": run_seed,
-		"text": "Day 0 of the outbreak. Seed %d." % run_seed})
+	EventBus.emit_event(&"run_started", {"seed": run_seed, "difficulty": WorldState.difficulty["id"],
+		"text": "Day 0 of the outbreak. %s, seed %d." % [WorldState.difficulty["name"], run_seed]})
 
 
 ## Reads `--name=value` from the user arguments after `--` on the command line.

@@ -10,13 +10,14 @@ Needs Godot 4.3 or later (built and tested on 4.7.2). From this folder:
 
 | What | Command |
 | --- | --- |
-| Play | `godot` (or `godot -- --seed=42` to replay a seed) |
+| Play | `godot` (opens on the start screen: pick Easy, Normal or Hard) |
+| Play straight into a run | `godot -- --difficulty=hard --seed=42` |
 | Open in the editor | `godot -e` |
 | All tests | `bash tools/run_tests.sh` |
 | One test suite | `godot --headless --script res://tests/test_milestone_4.gd` |
-| One headless run, told as a story | `godot --headless --script res://tools/headless_runner.gd -- --seed=7 --days=30 --strategy=balanced --verbose=1` |
-| Balance batch (100 games per strategy) | `godot --headless --script res://tools/headless_runner.gd -- --games=100 --strategy=all` |
-| Screenshot of the game screen | `godot res://tools/screenshot.tscn -- --seed=3 --hours=48 --tab=2 --out=/tmp/shot.png` |
+| One headless run, told as a story | `godot --headless --script res://tools/headless_runner.gd -- --difficulty=normal --seed=7 --days=30 --strategy=balanced --verbose=1` |
+| Balance batch (100 games per strategy and difficulty) | `godot --headless --script res://tools/headless_runner.gd -- --games=100 --difficulty=all --strategy=all` |
+| Screenshot of the game screen | `godot res://tools/screenshot.tscn -- --difficulty=normal --seed=3 --hours=48 --tab=2 --out=/tmp/shot.png` |
 
 On a fresh clone, run `godot --headless --import` once first.
 

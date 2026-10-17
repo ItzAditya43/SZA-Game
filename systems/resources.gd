@@ -6,6 +6,7 @@ extends "res://core/sim_system.gd"
 
 const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 const TICK_DAYS: float = 1.0 / 144.0
 
@@ -75,7 +76,10 @@ func setup() -> void:
 	WorldState.stats["full_ration_days"] = 0
 	var start: Dictionary = Data.table("scenario")["start_stores"]
 	for item: String in start:
-		Stores.add(WorldState.stores, item, float(start[item]))
+		var qty: float = float(start[item]) * Difficulty.mult("start_stores")
+		if String(Data.entry("items", item).get("unit", "")) in ["count", "rounds", "units"]:
+			qty = float(roundi(qty))
+		Stores.add(WorldState.stores, item, qty)
 
 
 func tick() -> void:

@@ -11,6 +11,7 @@ const BuildingPanel := preload("res://ui/building_panel.gd")
 const DecisionPanel := preload("res://ui/decision_panel.gd")
 const BasePanel := preload("res://ui/base_panel.gd")
 const EndScreen := preload("res://ui/end_screen.gd")
+const StartScreen := preload("res://ui/start_screen.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
 const LOG_HEIGHT: float = 140.0
@@ -22,6 +23,7 @@ var map: MapGrid
 var building_panel: BuildingPanel
 var decision_panel: DecisionPanel
 var end_screen: EndScreen
+var start_screen: StartScreen
 
 
 func _ready() -> void:
@@ -80,8 +82,25 @@ func _ready() -> void:
 	log_panel.custom_minimum_size = Vector2(0, LOG_HEIGHT)
 	column.add_child(log_panel)
 
+	# Dims and blocks the game screen while the start or end screen is up.
+	var backdrop: ColorRect = ColorRect.new()
+	backdrop.color = Color(0, 0, 0, 0.6)
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	backdrop.visible = false
+	add_child(backdrop)
 	end_screen = EndScreen.new()
+	end_screen.add_to_group(&"modal")
 	add_child(end_screen)
+	start_screen = StartScreen.new()
+	start_screen.visible = false
+	start_screen.add_to_group(&"modal")
+	add_child(start_screen)
+	# Above everything else on screen, whatever order the panels redraw in.
+	for layer: Control in [backdrop, end_screen, start_screen]:
+		layer.z_index = 10
+	for modal: Control in [end_screen, start_screen]:
+		modal.visibility_changed.connect(func() -> void: backdrop.visible = end_screen.visible or start_screen.visible)
 
 
 func _add_map() -> void:

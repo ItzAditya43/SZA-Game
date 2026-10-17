@@ -10,6 +10,7 @@ extends "res://core/sim_system.gd"
 const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 const ZONE_AREA_KM2: float = 0.25
 const ZONE_HALF_M: float = 250.0
@@ -91,7 +92,7 @@ func setup() -> void:
 		for y: int in range(int(i / Geo.ZONE_COLS) * size, (int(i / Geo.ZONE_COLS) + 1) * size):
 			if String(rows[y]).substr((i % Geo.ZONE_COLS) * size, size).contains("~"):
 				has_water = true
-		WorldState.zones.append({"index": i, "name": zone_name(i), "infected": float(start[i]),
+		WorldState.zones.append({"index": i, "name": zone_name(i), "infected": float(start[i]) * Difficulty.mult("infected"),
 			"growth_weight": float(weights[i]), "has_water": has_water})
 	WorldState.stats["infected_killed"] = 0
 	WorldState.stats["infected_peak"] = total()
@@ -142,7 +143,8 @@ func _daily() -> void:
 		for zone: Dictionary in WorldState.zones:
 			weight_sum += float(zone["growth_weight"])
 		for zone: Dictionary in WorldState.zones:
-			zone["infected"] = float(zone["infected"]) + float(scenario["growth_per_day"]) * float(zone["growth_weight"]) / weight_sum
+			zone["infected"] = float(zone["infected"]) + float(scenario["growth_per_day"]) * Difficulty.mult("infected") \
+				* float(zone["growth_weight"]) / weight_sum
 		WorldState.stats["infected_peak"] = maxf(float(WorldState.stats["infected_peak"]), total())
 	var rate: float = 0.0
 	if day >= int(scenario["die_off_start_day"]):
@@ -250,7 +252,7 @@ func _roll_encounter(s: Dictionary) -> void:
 		mult = INSIDE_EXPOSURE_BASE + INSIDE_EXPOSURE_PER_DANGER * float(building.get("danger", 0.3))
 	mult *= 1.0 + float(exposure["noise_m"]) * NOISE_EXPOSURE_PER_M
 	mult *= maxf(0.3, STEALTH_BASE - STEALTH_PER_SKILL * Body.skill(s, "scavenging"))
-	var chance: float = 1.0 - exp(-ENCOUNTER_K * density * act * mult)
+	var chance: float = 1.0 - exp(-ENCOUNTER_K * Difficulty.mult("encounters") * density * act * mult)
 	if not Rng.chance(chance):
 		return
 	var met: int = 1 + floori(Rng.randf() * (1.0 + density * GROUP_PER_DENSITY))
@@ -295,7 +297,7 @@ func _resolve(s: Dictionary, zone: Dictionary, met: int) -> void:
 	killed_infected = mini(killed_infected, roundi(float(zone["infected"])))
 	zone["infected"] = maxf(0.0, float(zone["infected"]) - killed_infected)
 	WorldState.stats["infected_killed"] = int(WorldState.stats["infected_killed"]) + killed_infected
-	s["stress"] = clampf(float(s["stress"]) + float(STRESS_BY_OUTCOME[outcome]), 0.0, 100.0)
+	s["stress"] = clampf(float(s["stress"]) + float(STRESS_BY_OUTCOME[outcome]) * Difficulty.mult("stress"), 0.0, 100.0)
 	match outcome:
 		&"injured":
 			s["injuries"].append(_random_wound())

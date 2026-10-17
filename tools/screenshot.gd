@@ -1,6 +1,7 @@
 extends Node
 ## Opens the game screen, fast-forwards the simulation, and saves a screenshot.
-## godot res://tools/screenshot.tscn -- --seed=42 --hours=30 --tab=0 --out=/tmp/shot.png
+## godot res://tools/screenshot.tscn -- --difficulty=normal --seed=42 --hours=30 --tab=0 --out=/tmp/shot.png
+## Without --difficulty the shot shows the start screen.
 ## Used to check the UI without clicking through it by hand.
 
 const SimRun := preload("res://core/sim_run.gd")

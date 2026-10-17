@@ -10,6 +10,7 @@ const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Decisions := preload("res://core/decisions.gd")
 const Geo := preload("res://core/geo.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 const TICK_DAYS: float = 1.0 / 144.0
 const TICK_HOURS: float = 1.0 / 6.0
@@ -466,6 +467,8 @@ func _stress(s: Dictionary) -> void:
 		delta += float(STRESS_PER_DAY["exhausted"])
 	if delta == 0.0:
 		delta -= STRESS_RELIEF_CALM_PER_DAY
+	else:
+		delta *= Difficulty.mult("stress")
 	if s["activity"] == &"sleeping":
 		delta -= STRESS_RELIEF_SLEEPING_PER_DAY
 	elif s["activity"] == &"resting":
@@ -476,7 +479,7 @@ func _stress(s: Dictionary) -> void:
 func _group_stress(amount: float, except: Dictionary = {}) -> void:
 	for other: Dictionary in WorldState.survivors:
 		if other["status"] == &"ok" and other["id"] != except.get("id", ""):
-			other["stress"] = clampf(float(other["stress"]) + amount, 0.0, 100.0)
+			other["stress"] = clampf(float(other["stress"]) + amount * Difficulty.mult("stress"), 0.0, 100.0)
 
 
 # --- Daily ---
@@ -486,7 +489,7 @@ func _daily(s: Dictionary) -> void:
 	for injury: Dictionary in s["injuries"]:
 		if injury["infection"] != &"none":
 			continue
-		var chance: float = float(WOUND_INFECTION_CHANCE_PER_DAY.get(injury["type"], 0.1))
+		var chance: float = float(WOUND_INFECTION_CHANCE_PER_DAY.get(injury["type"], 0.1)) * Difficulty.mult("disease")
 		if injury["bandaged"]:
 			chance *= BANDAGED_INFECTION_MULT
 		if injury["stitched"]:
@@ -503,7 +506,7 @@ func _daily(s: Dictionary) -> void:
 				"text": "%s's %s is red, hot and swelling." % [s["name"], Body.visible_wound_type(injury)]})
 	if s["drank_untreated_today"]:
 		s["drank_untreated_today"] = false
-		if s["illness"].is_empty() and Rng.chance(UNTREATED_WATER_ILLNESS_CHANCE):
+		if s["illness"].is_empty() and Rng.chance(UNTREATED_WATER_ILLNESS_CHANCE * Difficulty.mult("disease")):
 			_start_illness(s)
 	if float(s["stress"]) >= Body.MAY_LEAVE_STRESS and Rng.chance(LEAVE_CHANCE_PER_DAY):
 		s["status"] = &"left"

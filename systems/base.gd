@@ -10,6 +10,7 @@ const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
 const Decisions := preload("res://core/decisions.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 # --- Defense ---
 ## Each guard adds this plus 2 per point of combat, less when tired.
@@ -177,10 +178,11 @@ func _maybe_attack() -> void:
 	var count: float = float(zone["infected"])
 	var alert: float = float(WorldState.base["alert"])
 	var defense: float = float(WorldState.base["defense"])
-	var chance: float = ATTACK_BASE_PER_HOUR * (count / ATTACK_DENSITY_REF) * (1.0 + alert) * exp(-defense / DEFENSE_SCALE)
+	var attacks: float = Difficulty.mult("attacks")
+	var chance: float = ATTACK_BASE_PER_HOUR * attacks * (count / ATTACK_DENSITY_REF) * (1.0 + alert) * exp(-defense / DEFENSE_SCALE)
 	if not Rng.chance(chance):
 		return
-	var size: int = maxi(ATTACK_MIN_SIZE, roundi(count * ATTACK_SHARE_OF_ZONE * (1.0 + alert) * lerpf(0.5, 1.5, Rng.randf())))
+	var size: int = maxi(ATTACK_MIN_SIZE, roundi(count * ATTACK_SHARE_OF_ZONE * attacks * (1.0 + alert) * lerpf(0.5, 1.5, Rng.randf())))
 	_attack(size, zone)
 
 
@@ -205,7 +207,7 @@ func _attack(size: int, zone: Dictionary) -> void:
 			if Rng.chance(GUARD_HURT_CHANCE * strength / maxf(defense, 1.0) * Body.injury_multiplier(g)):
 				_hurt(g, Rng.chance(0.3))
 		for s: Dictionary in at_base:
-			s["stress"] = clampf(float(s["stress"]) + STRESS_ON_ATTACK, 0.0, 100.0)
+			s["stress"] = clampf(float(s["stress"]) + STRESS_ON_ATTACK * Difficulty.mult("stress"), 0.0, 100.0)
 		EventBus.emit_event(&"night_attack", {"size": size, "strength": strength, "defense": defense, "breached": false,
 			"text": "About %d infected hit the base in the dark. The defenses held (%d against %d)." % [size, roundi(defense), roundi(strength)]})
 	else:
@@ -216,7 +218,7 @@ func _attack(size: int, zone: Dictionary) -> void:
 		var hurt_chance: float = clampf(BREACH_HURT_BASE + BREACH_HURT_PER_OVERMATCH * (strength - defense) / maxf(defense, 1.0), 0.1, 0.9)
 		var casualties: PackedStringArray = []
 		for s: Dictionary in at_base:
-			s["stress"] = clampf(float(s["stress"]) + STRESS_ON_BREACH, 0.0, 100.0)
+			s["stress"] = clampf(float(s["stress"]) + STRESS_ON_BREACH * Difficulty.mult("stress"), 0.0, 100.0)
 			var chance: float = hurt_chance * Body.injury_multiplier(s) * (ASLEEP_HURT_MULT if s["asleep"] else 1.0)
 			if not Rng.chance(minf(chance, 0.95)):
 				continue

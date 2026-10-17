@@ -7,6 +7,7 @@ extends "res://core/sim_system.gd"
 const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
 const Decisions := preload("res://core/decisions.gd")
+const Difficulty := preload("res://core/difficulty.gd")
 
 ## Events without an hour roll at this hour.
 const DEFAULT_HOUR: int = 10
@@ -121,7 +122,7 @@ func _apply(effects: Array) -> void:
 				zone["infected"] = float(zone["infected"]) * (1.0 - float(effect["share"]))
 			"group_stress":
 				for s: Dictionary in WorldState.group():
-					s["stress"] = clampf(float(s["stress"]) + float(effect["value"]), 0.0, 100.0)
+					s["stress"] = clampf(float(s["stress"]) + float(effect["value"]) * Difficulty.mult("stress"), 0.0, 100.0)
 			"add_survivor":
 				EventBus.emit_event(&"command_add_survivor", {"id": effect["id"],
 					"bitten": Rng.chance(float(effect.get("bitten_chance", 0.0)))})

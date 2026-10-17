@@ -45,6 +45,8 @@ var stats: Dictionary = {}
 ## {"state": &"running" | &"won" | &"lost", ...} (systems/outcome.gd).
 var outcome: Dictionary = {}
 var next_id: int = 1
+## The difficulty preset this run uses (a row of data/difficulty.json). See core/difficulty.gd.
+var difficulty: Dictionary = {}
 ## Hooks for later prototypes. Both stay empty in Prototype 1.
 var factions: Array = []
 var region: Dictionary = {}

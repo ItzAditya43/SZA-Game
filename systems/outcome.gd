@@ -54,6 +54,7 @@ func _finish(state: StringName, reason: String) -> void:
 		"state": state, "reason": reason, "tick": WorldState.tick, "day": WorldState.day(),
 		"alive": alive, "started": WorldState.survivors.size(), "full_ration_days": full_days,
 		"supplies_points": supplies, "score": score, "fates": fates,
+		"difficulty": WorldState.difficulty.get("id", "normal"),
 	}
 	EventBus.emit_event(&"run_won" if state == &"won" else &"run_lost", {"score": score, "alive": alive,
 		"text": "%s %s Score %d." % ["You survived." if state == &"won" else "The run is over.", reason, roundi(score)]})

@@ -1,0 +1,14 @@
+[
+  { "id": "easy", "name": "Easy",
+    "description": "Realistic, but forgiving. Fewer infected, slower looting by others, more on the shelves and in your stores, and people cope better. A place to learn how the systems connect.",
+    "multipliers": { "infected": 0.85, "encounters": 0.85, "attacks": 0.85, "looted_by_others": 0.8,
+                     "loot": 1.15, "start_stores": 1.3, "stress": 0.9, "disease": 0.85 } },
+  { "id": "normal", "name": "Normal",
+    "description": "Realistically difficult. The tuned baseline: a sensible plan usually gets most of the group to day 30, a careless one does not.",
+    "multipliers": { "infected": 1.0, "encounters": 1.0, "attacks": 1.0, "looted_by_others": 1.0,
+                     "loot": 1.0, "start_stores": 1.0, "stress": 1.0, "disease": 1.0 } },
+  { "id": "hard", "name": "Hard",
+    "description": "The same world, harsher. A bigger outbreak, more attacks, emptier shelves, thinner stores, and every loss weighs heavier.",
+    "multipliers": { "infected": 1.15, "encounters": 1.15, "attacks": 1.08, "looted_by_others": 1.2,
+                     "loot": 0.85, "start_stores": 0.8, "stress": 1.08, "disease": 1.15 } }
+]

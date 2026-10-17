@@ -23,7 +23,7 @@ func _ready() -> void:
 	row.add_child(_clock_label)
 
 	_weather_label = Label.new()
-	_weather_label.custom_minimum_size = Vector2(250, 0)
+	_weather_label.custom_minimum_size = Vector2(320, 0)
 	row.add_child(_weather_label)
 
 	for speed: TickLoop.Speed in [TickLoop.Speed.PAUSED, TickLoop.Speed.X1, TickLoop.Speed.X3, TickLoop.Speed.X10]:
@@ -53,6 +53,9 @@ func _ready() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key: InputEventKey = event as InputEventKey
 	if key == null or not key.pressed or key.echo:
+		return
+	# No time controls while the start or end screen is up.
+	if get_tree().get_nodes_in_group(&"modal").any(func(n: Node) -> bool: return (n as Control).visible):
 		return
 	match key.keycode:
 		KEY_SPACE:
@@ -100,7 +103,8 @@ func _refresh() -> void:
 	_clock_label.text = WorldState.clock_string()
 	var climate: Dictionary = WorldState.climate
 	var phase: String = "Day" if WorldState.phase() == WorldState.PHASE_DAY else "Night"
-	_weather_label.text = "%s · %.1f °C · %s" % [climate.get("date", ""), float(climate.get("temperature_c", 0.0)), phase]
+	_weather_label.text = "%s · %.1f °C · %s · %s" % [climate.get("date", ""), float(climate.get("temperature_c", 0.0)), phase,
+		WorldState.difficulty.get("name", "")]
 	var infra: Dictionary = WorldState.infrastructure
 	if infra.is_empty():
 		_utilities_label.text = ""

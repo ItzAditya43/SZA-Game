@@ -10,7 +10,7 @@ var _text: RichTextLabel
 func _ready() -> void:
 	visible = false
 	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.1, 0.96)
+	style.bg_color = Color(0.08, 0.09, 0.1, 1.0)
 	style.border_color = Color(1, 1, 1, 0.25)
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(8)
@@ -56,7 +56,8 @@ static func describe(outcome: Dictionary) -> String:
 	var won: bool = outcome["state"] == &"won"
 	var lines: PackedStringArray = []
 	lines.append("[center][font_size=28][b]%s[/b][/font_size][/center]" % ("You survived" if won else "The group is gone"))
-	lines.append("[center]%s  (%s)[/center]" % [outcome["reason"], WorldState.clock_string_at(int(outcome["tick"]))])
+	lines.append("[center]%s  (%s, %s)[/center]" % [outcome["reason"], WorldState.clock_string_at(int(outcome["tick"])),
+		WorldState.difficulty.get("name", "")])
 	lines.append("")
 	lines.append("[b]Score %d[/b] = %d alive × 100 + %d days on full rations × 10 + %d for supplies stored" % [
 		roundi(float(outcome["score"])), int(outcome["alive"]), int(outcome["full_ration_days"]), roundi(float(outcome["supplies_points"]))])

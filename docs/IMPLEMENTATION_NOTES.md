@@ -6,7 +6,7 @@ All of it was built in one pass (milestones 1 to 6 in order). Each milestone is 
 
 ## The milestone checks
 
-Every check runs headless: `bash tools/run_tests.sh` runs all six suites (118 checks; about 5 minutes, most of it the milestone 6 batch). The suites also cover behaviour the checkboxes imply but don't name.
+Every check runs headless: `bash tools/run_tests.sh` runs all seven suites (128 checks, the six milestones plus difficulty; about 7 minutes, most of it auto-played batches). The suites also cover behaviour the checkboxes imply but don't name.
 
 | Milestone | Check in GAME_DESIGN.md | How it is verified | Result |
 | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ Every check runs headless: `bash tools/run_tests.sh` runs all six suites (118 ch
 | 6 Events | A full 30-day run is completable | `test_milestone_6`: auto-played runs end won or lost by day 30, the end screen shows the score, time stops after | Pass |
 | 6 | The batch run shows survival is neither near 0% nor near 100% | `test_milestone_6` (40 games) and the 100-game batch below | Pass |
 
-## Balance: 100 games per strategy
+## Balance: 100 games per strategy (Normal)
 
 `godot --headless --script res://tools/headless_runner.gd -- --games=100 --strategy=all` (11.5 minutes):
 
@@ -35,6 +35,31 @@ Every check runs headless: `bash tools/run_tests.sh` runs all six suites (118 ch
 | Keep moving: relocate every 4 days | 17% | 12% | 1.6 | turned 168, scattered 153, left 126 |
 
 These numbers measure the auto-player as much as the game. It is a simple rule-based player (`tools/auto_player.gd`); a thoughtful human should do better.
+
+## Difficulty
+
+Three presets in `data/difficulty.json`, chosen on the start screen (or `--difficulty=` on the command line). All three keep the same rules and realism: the power still fails on day 3–6, a bite still turns someone in 24–72 hours. What changes is how big and how hostile the world is. Each preset is a set of multipliers on the Normal numbers:
+
+| Multiplier | Easy | Normal | Hard | What it scales |
+| --- | --- | --- | --- | --- |
+| infected | 0.85 | 1.0 | 1.15 | outbreak size and growth (5,100 / 6,000 / 6,900 at the start) |
+| encounters | 0.85 | 1.0 | 1.15 | chance of meeting infected outside |
+| attacks | 0.85 | 1.0 | 1.08 | night attack chance and size (both, so it compounds) |
+| looted_by_others | 0.8 | 1.0 | 1.2 | how fast other survivors strip buildings |
+| loot | 1.15 | 1.0 | 0.85 | what each building holds at the start |
+| start_stores | 1.3 | 1.0 | 0.8 | the group's starting supplies |
+| stress | 0.9 | 1.0 | 1.08 | every stress gain |
+| disease | 0.85 | 1.0 | 1.15 | wound infection and waterborne illness chances |
+
+Results of 40 auto-played games per cell:
+
+| | Balanced: won / survivors alive | Fortress: won / survivors alive |
+| --- | --- | --- |
+| Easy | 98% / 81% | 95% / 83% |
+| Normal | 68% / 48% | 95% / 71% |
+| Hard | 25% / 20% | 78% / 60% |
+
+A first try at Hard (×1.3 on everything) was a wall: 0% for balanced, groups collapsing around day 7. Attack chance and attack size both scale, so 1.3 became 1.69. The table above is the second pass.
 
 ## Spec ambiguities and how they were resolved
 
@@ -162,18 +187,41 @@ Each was settled by the realism rules or the simplest option that keeps the arch
 - Tests run in "sandbox" mode (`WorldState.flags.sandbox`), so a run never ends while a check is still looking at it.
 - The UI reads two tuning constants from `systems/jobs.gd` (trip speeds) for its trip estimate, rather than duplicating them.
 
-## Not done, or not verified
+## Status
 
-- **Not played by hand end to end.** The UI was checked by scripted clicks and key presses, headless UI tests and screenshots, and the simulation by tests, story runs and batches.
-- **Keep moving is the weakest strategy (17% won).** Each move abandons whatever can't be carried and leaves barricades behind, so hunger and stress break the group. The spec wants it to be a viable strategy. It may need cheaper moves (carts, handcarts, vehicles), quick barricading, or a better auto-player. Worth discussing.
-- **Losses are mostly bites and broken morale.** Starvation, sepsis, illness and heat rarely kill a decently run group in 30 days. That matches the spec's timeline, where hunger and disease take over after day 30, but it is a design question.
-- **The auto-player is basic.** It never uses the generator, only fires guns as the fortress, never chooses rationing beyond food stocks, and answers bites with quarantine every time.
-- **The UI is functional rather than friendly.** The survivor cards are tall and text-heavy. There are no tooltips explaining numbers, and no way to set loot priorities or pick a water source.
-- **Not modelled from the Prototype 1 column:**
-  - petrol going stale after ~30 days (beyond the run)
-  - generator "charging" (nothing needs charging yet)
-- **Exported builds** need `*.json` added to the export filter (the data folder isn't a Godot resource).
-- **Every balance number is a starting value.** Rule 7 has them in data files or named constants at the top of each system.
+### Done
+- All six milestones of Prototype 1, every row of the "Prototype 1 (upgraded)" column of the Fidelity map, and the 12 checks in GAME_DESIGN.md (verified by tests; the designer ticks the boxes).
+- Three difficulty levels (Easy, Normal, Hard), a start screen to choose one, and a replayable seed.
+- Headless batch balancing with four auto-played strategies; 128 automated checks.
+
+### Remaining before Prototype 1 is truly done
+- **A human playthrough.** Nobody has played a full run by hand yet. The spec's "Done means" asks whether a 30-day run takes 45–60 minutes and whether the loop is fun. At 1× a 30-day run is about 36 minutes plus pauses for decisions; only play can answer the fun question.
+- **Keep moving is not yet a viable strategy** (17% on Normal), though the spec names it as one that should succeed.
+- **Confirm the two provisional answers to the spec's open questions:** the map is hand-laid in a script, and the five survivors are fixed.
+- **UI clarity.**
+  - Tooltips explaining numbers.
+  - Compact survivor cards.
+  - Loot priorities and water-source choice.
+  - Clearer warnings before the taps fail.
+- **Export settings** (add `*.json` to the export filter) if the game is to be built as an executable.
+- **Small spec items not modelled:** petrol going stale (after day 30, so outside this run) and generator "charging" (nothing needs charge yet).
+
+### To brainstorm
+- **How difficulty should feel.** Is Easy forgiving enough? Should harder levels also hide information (exact infected counts, wound types) rather than only scale numbers?
+- **What kills people.** Bites and broken morale dominate. Hunger, disease and heat rarely kill a decent group in 30 days, which matches the spec's timeline (they take over after day 30). Should some of that pressure arrive earlier?
+- **Morale.** Survivors can stay "too shaken to work" for days. Ideas:
+  - purpose and routine
+  - rest days
+  - a leader's choices
+  - friendships (Prototype 2–3 in the spec)
+- **Making a mobile group work.** Handcarts or abandoned vehicles to carry more, quick temporary barricades, caches left behind on purpose.
+- **What the player knows.**
+  - Exact numbers versus rough estimates (realism rule 7).
+  - Infected counts per zone shown exactly versus only through scouting.
+- **The roster.** A fixed five, a pick from a pool, or random each run, with traits and relationships.
+- **Save and load** for sessions of 45 minutes or more.
+- **Prototype 2 scope from the timeline:** days 30–100, the first monsoon, rain catchment, carriers, one rival group, barter.
+- **Art and sound direction** once the systems feel right.
 
 ## Where to look
 
