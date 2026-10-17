@@ -6,6 +6,8 @@ const SimRun := preload("res://core/sim_run.gd")
 const Stores := preload("res://core/stores.gd")
 const Body := preload("res://core/body.gd")
 
+## The SceneTree running the checks, for checks that need UI nodes in a tree.
+var tree: SceneTree
 var failures: int = 0
 var checks: int = 0
 var captured: Array[Dictionary] = []

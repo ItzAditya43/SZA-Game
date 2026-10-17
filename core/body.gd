@@ -49,7 +49,7 @@ static func new_survivor(row: Dictionary) -> Dictionary:
 		"status": &"ok",  # ok | dead | turned | exiled | left
 		"cause": "",
 		"jobs": {"day": StringName(jobs.get("day", "rest")), "night": StringName(jobs.get("night", "rest"))},
-		"targets": {"day": "", "night": ""},
+		"targets": {"day": String(row.get("targets", {}).get("day", "")), "night": String(row.get("targets", {}).get("night", ""))},
 		"job_now": &"rest",
 		"activity": &"idle",
 		"outdoors": false,

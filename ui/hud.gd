@@ -6,6 +6,8 @@ extends Control
 const Controls := preload("res://ui/controls.gd")
 const EventLog := preload("res://ui/event_log.gd")
 const SurvivorPanel := preload("res://ui/survivor_panel.gd")
+const MapGrid := preload("res://ui/map_grid.gd")
+const BuildingPanel := preload("res://ui/building_panel.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
 const LOG_HEIGHT: float = 170.0
@@ -13,6 +15,8 @@ const LOG_HEIGHT: float = 170.0
 var ui_state: UiState = UiState.new()
 var tabs: TabContainer
 var left: VBoxContainer
+var map: MapGrid
+var building_panel: BuildingPanel
 
 
 func _ready() -> void:
@@ -49,12 +53,25 @@ func _ready() -> void:
 	survivors.ui_state = ui_state
 	survivors.name = "Group"
 	tabs.add_child(survivors)
+	building_panel = BuildingPanel.new()
+	building_panel.ui_state = ui_state
+	building_panel.name = "Building"
+	tabs.add_child(building_panel)
+	ui_state.building_selected.connect(func(id: String) -> void:
+		if id != "":
+			tabs.current_tab = building_panel.get_index())
 
 	var log_panel: EventLog = EventLog.new()
 	log_panel.custom_minimum_size = Vector2(0, LOG_HEIGHT)
 	column.add_child(log_panel)
 
 
-## LATER (Milestone 3): the town map grid.
 func _add_map() -> void:
-	pass
+	map = MapGrid.new()
+	map.ui_state = ui_state
+	left.add_child(map)
+	var legend: Label = Label.new()
+	legend.add_theme_font_size_override("font_size", 12)
+	legend.modulate = Color(1, 1, 1, 0.7)
+	legend.text = "Green outline: base · yellow: selected · blue dots: survivors out · red tint: infected per zone"
+	left.add_child(legend)

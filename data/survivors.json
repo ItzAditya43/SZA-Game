@@ -7,7 +7,7 @@
     "jobs": { "day": "fortify", "night": "rest" } },
   { "id": "farhan",  "name": "Farhan",  "profession": "Mechanic",         "age": 41, "weight_kg": 76, "role": "starting",
     "skills": { "scavenging": 7, "medicine": 1, "combat": 6 }, "stress": 62,
-    "jobs": { "day": "scavenge", "night": "rest" } },
+    "jobs": { "day": "scavenge", "night": "rest" }, "targets": { "day": "kirana_06" } },
   { "id": "lakshmi", "name": "Lakshmi", "profession": "Farmer",           "age": 46, "weight_kg": 62, "role": "starting",
     "skills": { "scavenging": 5, "medicine": 3, "combat": 4 }, "stress": 35,
     "jobs": { "day": "cook", "night": "rest" } },

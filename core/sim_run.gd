@@ -10,6 +10,8 @@ const SimSystem := preload("res://core/sim_system.gd")
 ## positions, and Survivors runs after both so it applies this tick's wounds.
 const SYSTEM_SCRIPTS: Array[Script] = [
 	preload("res://systems/time.gd"),
+	preload("res://systems/town.gd"),
+	preload("res://systems/base.gd"),
 	preload("res://systems/jobs.gd"),
 	preload("res://systems/survivors.gd"),
 	preload("res://systems/resources.gd"),

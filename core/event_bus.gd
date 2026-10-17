@@ -6,8 +6,8 @@ extends Node
 signal event(event_name: StringName, payload: Dictionary)
 
 const LOG_SIZE: int = 200
-## Broadcast every tick, so kept out of the log to leave room for real events.
-const UNLOGGED_EVENTS: Array[StringName] = [&"tick"]
+## Broadcast every tick (or nearly), so kept out of the log to leave room for real events.
+const UNLOGGED_EVENTS: Array[StringName] = [&"tick", &"noise"]
 
 ## Most recent last. Each entry: {"tick": int, "name": StringName, "payload": Dictionary}.
 var event_log: Array[Dictionary] = []

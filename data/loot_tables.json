@@ -1,1 +1,99 @@
-[]
+[
+  { "id": "house", "comment": "Rice, dal, utensils, a little medicine. Food quantities are kcal.",
+    "loot": [
+      { "item": "rice",          "min": 2000, "max": 15000, "chance": 0.95 },
+      { "item": "dal",           "min": 1000, "max": 7000,  "chance": 0.9 },
+      { "item": "atta",          "min": 1000, "max": 6000,  "chance": 0.6 },
+      { "item": "packaged_food", "min": 500,  "max": 4000,  "chance": 0.8 },
+      { "item": "fresh_produce", "min": 300,  "max": 2000,  "chance": 0.7 },
+      { "item": "water_bottled", "min": 2,    "max": 10,    "chance": 0.4 },
+      { "item": "bandages",      "min": 1,    "max": 3,     "chance": 0.4 },
+      { "item": "painkillers",   "min": 1,    "max": 2,     "chance": 0.5 },
+      { "item": "antibiotics",   "min": 1,    "max": 1,     "chance": 0.08 },
+      { "item": "ors",           "min": 1,    "max": 3,     "chance": 0.3 },
+      { "item": "cooking_gas",   "min": 2,    "max": 12,    "chance": 0.7 },
+      { "item": "materials",     "min": 2,    "max": 8,     "chance": 1.0 },
+      { "item": "machete",       "min": 1,    "max": 1,     "chance": 0.15 },
+      { "item": "water_drum",    "min": 1,    "max": 1,     "chance": 0.1 }
+    ] },
+  { "id": "kirana", "comment": "Packaged food, bottled water, staples by the sack.",
+    "loot": [
+      { "item": "rice",          "min": 20000, "max": 80000 },
+      { "item": "dal",           "min": 10000, "max": 40000 },
+      { "item": "atta",          "min": 10000, "max": 40000 },
+      { "item": "packaged_food", "min": 20000, "max": 80000 },
+      { "item": "fresh_produce", "min": 2000,  "max": 8000,  "chance": 0.5 },
+      { "item": "water_bottled", "min": 40,    "max": 200 },
+      { "item": "ors",           "min": 2,     "max": 10,    "chance": 0.5 },
+      { "item": "materials",     "min": 1,     "max": 4 }
+    ] },
+  { "id": "pharmacy", "comment": "Antibiotics, bandages, painkillers (the spec example), plus ORS.",
+    "loot": [
+      { "item": "antibiotics",   "min": 2,   "max": 6 },
+      { "item": "bandages",      "min": 5,   "max": 15 },
+      { "item": "painkillers",   "min": 3,   "max": 10 },
+      { "item": "ors",           "min": 10,  "max": 30 },
+      { "item": "tourniquet",    "min": 1,   "max": 2,    "chance": 0.5 },
+      { "item": "packaged_food", "min": 500, "max": 2000, "chance": 0.5 },
+      { "item": "water_bottled", "min": 5,   "max": 20,   "chance": 0.5 }
+    ] },
+  { "id": "petrol_pump", "comment": "Fuel in the underground tanks, a few snacks.",
+    "loot": [
+      { "item": "fuel",          "min": 300,  "max": 2000 },
+      { "item": "packaged_food", "min": 2000, "max": 8000 },
+      { "item": "water_bottled", "min": 10,   "max": 40 },
+      { "item": "materials",     "min": 1,    "max": 3 }
+    ] },
+  { "id": "hardware", "comment": "Tools, wire, sheets, nails.",
+    "loot": [
+      { "item": "materials",     "min": 40, "max": 120 },
+      { "item": "water_drum",    "min": 2,  "max": 6 },
+      { "item": "machete",       "min": 1,  "max": 3, "chance": 0.6 },
+      { "item": "generator",     "min": 1,  "max": 1, "chance": 0.4 },
+      { "item": "fuel",          "min": 5,  "max": 20, "chance": 0.3 }
+    ] },
+  { "id": "school", "comment": "Benches (materials), the midday-meal store of rice and dal, a first-aid box, a water tank.",
+    "loot": [
+      { "item": "materials",     "min": 20,    "max": 60 },
+      { "item": "rice",          "min": 10000, "max": 40000 },
+      { "item": "dal",           "min": 5000,  "max": 15000 },
+      { "item": "bandages",      "min": 2,     "max": 5, "chance": 0.6 },
+      { "item": "cooking_gas",   "min": 5,     "max": 15, "chance": 0.6 }
+    ] },
+  { "id": "hospital", "comment": "Large medical stock.",
+    "loot": [
+      { "item": "antibiotics",   "min": 10,   "max": 30 },
+      { "item": "bandages",      "min": 30,   "max": 80 },
+      { "item": "painkillers",   "min": 10,   "max": 40 },
+      { "item": "ors",           "min": 30,   "max": 80 },
+      { "item": "tourniquet",    "min": 2,    "max": 6 },
+      { "item": "water_bottled", "min": 20,   "max": 100 },
+      { "item": "packaged_food", "min": 2000, "max": 10000 },
+      { "item": "generator",     "min": 1,    "max": 1, "chance": 0.5 },
+      { "item": "fuel",          "min": 50,   "max": 200, "chance": 0.6 }
+    ] },
+  { "id": "police_station", "comment": "Rare weapons and ammo, strong walls.",
+    "loot": [
+      { "item": "rifle",         "min": 1,    "max": 3,   "chance": 0.7 },
+      { "item": "ammo",          "min": 20,   "max": 120, "chance": 0.7 },
+      { "item": "machete",       "min": 1,    "max": 2,   "chance": 0.5 },
+      { "item": "materials",     "min": 10,   "max": 20 },
+      { "item": "tourniquet",    "min": 1,    "max": 2,   "chance": 0.5 },
+      { "item": "bandages",      "min": 2,    "max": 6 },
+      { "item": "packaged_food", "min": 1000, "max": 4000 },
+      { "item": "water_bottled", "min": 10,   "max": 30 }
+    ] },
+  { "id": "water_tower", "comment": "Thousands of litres in the tank (not loot), a little scrap.",
+    "loot": [
+      { "item": "materials",     "min": 1, "max": 5, "chance": 0.3 }
+    ] },
+  { "id": "factory", "comment": "Materials and bulk food sacks.",
+    "loot": [
+      { "item": "rice",          "min": 50000, "max": 250000, "chance": 0.5 },
+      { "item": "packaged_food", "min": 30000, "max": 150000, "chance": 0.5 },
+      { "item": "materials",     "min": 30,    "max": 80 },
+      { "item": "fuel",          "min": 20,    "max": 80, "chance": 0.6 },
+      { "item": "generator",     "min": 1,     "max": 1,  "chance": 0.4 },
+      { "item": "water_drum",    "min": 2,     "max": 8,  "chance": 0.6 }
+    ] }
+]

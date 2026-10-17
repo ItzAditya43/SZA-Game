@@ -3,9 +3,12 @@ extends "res://core/sim_system.gd"
 ## night shift (18:00-06:00). Every tick this system turns the job and the hour
 ## into an activity (sleeping, working, travelling...) that Survivors uses for the
 ## body and other systems use for output (Base: fortify, Resources: cook...).
-## Player orders arrive as `command_set_job` on the bus.
+## Scavenging is a trip: out along the streets, a search, and back with what fits
+## in a pack. Player orders arrive as `command_set_job` on the bus.
 
 const Body := preload("res://core/body.gd")
+const Stores := preload("res://core/stores.gd")
+const Geo := preload("res://core/geo.gd")
 
 const JOBS: Array[StringName] = [&"rest", &"scavenge", &"guard", &"fortify", &"collect_water", &"cook", &"treat"]
 ## Activity while doing each job at base during working hours.
@@ -29,31 +32,73 @@ const NAP_FATIGUE: float = 35.0
 const NAP_SLEEP_DEBT_H: float = 2.0
 const WAKE_FATIGUE: float = 5.0
 
+# --- Trips ---
+## Moving carefully through streets with infected about, and slower when loaded.
+const SPEED_OUT_M_PER_H: float = 1800.0
+const SPEED_BACK_M_PER_H: float = 1400.0
+## Hurt or exhausted people still move, just slower.
+const MIN_SPEED_MULT: float = 0.4
+const SEARCH_HOURS: float = 2.0
+## Searching by torchlight takes longer and finds less.
+const NIGHT_SEARCH_TIME_MULT: float = 1.5
+const NIGHT_SEARCH_SHARE_MULT: float = 0.7
+## Share of what is there that a search turns up: base plus per point of scavenging skill.
+const SEARCH_SHARE_BASE: float = 0.35
+const SEARCH_SHARE_PER_SKILL: float = 0.07
+const SEARCH_SHARE_MAX: float = 0.9
+const CARRY_KG: float = 25.0
+## Noise radius in metres: walking and whispering, quiet searching, forcing a door.
+const NOISE_TRAVEL_M: float = 15.0
+const NOISE_SEARCH_M: float = 10.0
+const NOISE_BREAK_DOOR_M: float = 50.0
+## What goes in the pack first, and at most how many kg of each category per trip.
+const LOOT_PRIORITY: Array[String] = [
+	"antibiotics", "tourniquet", "ors", "bandages", "painkillers", "ammo", "rifle", "machete",
+	"water_bottled", "packaged_food", "rice", "dal", "atta", "fresh_produce", "fuel", "cooking_gas",
+	"materials", "water_drum", "generator",
+]
+const CATEGORY_KG_CAP: Dictionary = {
+	"medicine": 3.0, "weapon": 8.0, "water": 8.0, "food": 14.0, "fuel": 8.0, "materials": 10.0, "gear": 25.0,
+}
+## Gear worth carrying home first when the group has none yet.
+const WANTED_GEAR: Dictionary = {"generator": 1.0, "water_drum": 2.0}
+## Taken along on every trip if the stores have them.
+const TRIP_KIT: Dictionary = {"tourniquet": 1.0, "bandages": 1.0}
+const TRIP_WATER_L: float = 1.5
+const TRIP_AMMO: int = 10
+
 
 func setup() -> void:
 	listen(&"command_set_job", _on_set_job)
+	listen(&"encounter", _on_encounter)
 	for s: Dictionary in WorldState.survivors:
+		_place_at_base(s)
 		_schedule(s)
 
 
 func tick() -> void:
 	for s: Dictionary in WorldState.survivors:
+		s["exposure"] = {}
 		if s["status"] != &"ok":
 			s["activity"] = &"none"
 			continue
-		_schedule(s)
+		if s["location"] == &"away":
+			_continue_trip(s)
+		else:
+			_place_at_base(s)
+			_schedule(s)
 
 
-## Sets job_now, activity, outdoors and asleep for a survivor at base.
+## Sets job_now, activity, outdoors and asleep for a survivor at base, and starts
+## a trip when a scavenging shift begins.
 func _schedule(s: Dictionary) -> void:
 	var shift: StringName = current_shift()
 	var job: StringName = s["jobs"][shift]
 	if s["quarantined"] or Body.is_incapacitated(s):
 		job = &"rest"
 	elif float(s["stress"]) >= Body.REFUSES_JOBS_STRESS and job != &"rest":
-		var shift_id: int = shift_index()
-		if int(s.get("refused_shift", -1)) != shift_id:
-			s["refused_shift"] = shift_id
+		if int(s.get("refused_shift", -1)) != shift_index():
+			s["refused_shift"] = shift_index()
 			EventBus.emit_event(&"job_refused", {"survivor": s["id"],
 				"text": "%s is too shaken to %s and stays in." % [s["name"], String(s["jobs"][shift]).replace("_", " ")]})
 		job = &"rest"
@@ -66,11 +111,14 @@ func _schedule(s: Dictionary) -> void:
 	if job == &"guard":
 		s["activity"] = &"guarding"
 		s["outdoors"] = true
+	elif job == &"scavenge":
+		s["activity"] = &"idle"
+		if in_work_hours() and int(s.get("trip_shift", -1)) != shift_index():
+			_start_scavenge(s, shift)
 	elif in_work_hours() and JOB_ACTIVITY.has(job):
 		s["activity"] = JOB_ACTIVITY[job]
 		s["outdoors"] = OUTDOOR_JOBS.has(job)
 	else:
-		# LATER (Milestone 3): scavenge trips.
 		s["activity"] = &"idle"
 
 
@@ -83,6 +131,213 @@ func _rest(s: Dictionary, shift: StringName) -> void:
 	else:
 		s["asleep"] = float(s["fatigue"]) >= NAP_FATIGUE or float(s["sleep_debt_h"]) >= NAP_SLEEP_DEBT_H
 	s["activity"] = &"sleeping" if s["asleep"] else &"resting"
+
+
+# --- Trips ---
+
+func _start_scavenge(s: Dictionary, shift: StringName) -> void:
+	s["trip_shift"] = shift_index()
+	var target: Dictionary = WorldState.building(String(s["targets"][shift]))
+	if target.is_empty() or target["id"] == WorldState.base.get("building", ""):
+		EventBus.emit_event(&"job_needs_target", {"survivor": s["id"],
+			"text": "%s has no building to scavenge. Pick one on the map." % s["name"]})
+		return
+	_pack_for_trip(s)
+	_begin_trip(s, &"scavenge", target)
+	s["trip"]["packed"] = Stores.snapshot(s["carried"])
+	EventBus.emit_event(&"scavenge_started", {"survivor": s["id"], "building": target["id"],
+		"text": "%s sets out for %s (%s, %.1f km)." % [s["name"], target["name"],
+			Data.entry("buildings", String(target["type"]))["name"].to_lower(), float(s["trip"]["distance_m"]) / 1000.0]})
+
+
+func _begin_trip(s: Dictionary, kind: StringName, target: Dictionary) -> void:
+	var origin: Vector2 = Geo.base_center_m()
+	var dest: Vector2 = Geo.building_center_m(target)
+	s["location"] = &"away"
+	s["trip"] = {"kind": kind, "building": target["id"], "leg": &"out", "origin": origin, "dest": dest,
+		"distance_m": Geo.street_distance_m(origin, dest), "progress_m": 0.0, "work_ticks_left": 0,
+		"started_tick": WorldState.tick}
+	s["job_now"] = kind
+	_continue_trip(s)
+
+
+## The weapon, a first-aid kit and a bottle of water go along if the stores have them.
+func _pack_for_trip(s: Dictionary) -> void:
+	var stores: Dictionary = WorldState.stores
+	if WorldState.policies.get(&"use_guns", false) and Stores.total(stores, "rifle") >= 1.0 and Stores.total(stores, "ammo") >= 1.0:
+		Stores.take(stores, "rifle", 1.0)
+		s["weapon"] = "rifle"
+		s["ammo"] = int(Stores.take(stores, "ammo", float(TRIP_AMMO)))
+	elif Stores.total(stores, "machete") >= 1.0:
+		Stores.take(stores, "machete", 1.0)
+		s["weapon"] = "machete"
+	for item: String in TRIP_KIT:
+		Stores.add_lots(s["carried"], item, Stores.take_lots(stores, item, float(TRIP_KIT[item])))
+	for item: String in ["water_boiled", "water_bottled"]:
+		var have: float = Stores.total(s["carried"], "water_boiled") + Stores.total(s["carried"], "water_bottled")
+		Stores.add_lots(s["carried"], item, Stores.take_lots(stores, item, TRIP_WATER_L - have))
+
+
+func _continue_trip(s: Dictionary) -> void:
+	var trip: Dictionary = s["trip"]
+	var speed_mult: float = maxf(MIN_SPEED_MULT, Body.work_speed(s))
+	s["asleep"] = false
+	match trip["leg"]:
+		&"out", &"back":
+			var speed: float = SPEED_OUT_M_PER_H if trip["leg"] == &"out" else SPEED_BACK_M_PER_H
+			trip["progress_m"] = minf(float(trip["distance_m"]), float(trip["progress_m"]) + speed * speed_mult / 6.0)
+			s["activity"] = &"travelling"
+			s["outdoors"] = true
+			s["exposure"] = {"outdoors": true, "building": "", "noise_m": NOISE_TRAVEL_M}
+			_set_position(s)
+			if float(trip["progress_m"]) >= float(trip["distance_m"]):
+				if trip["leg"] == &"out":
+					_arrive(s)
+				else:
+					_return_home(s)
+		&"search":
+			s["activity"] = &"searching"
+			s["outdoors"] = false
+			s["exposure"] = {"outdoors": false, "building": trip["building"], "noise_m": NOISE_SEARCH_M,
+				"zone": Geo.zone_index_at(trip["dest"])}
+			trip["work_ticks_left"] = int(trip["work_ticks_left"]) - 1
+			if int(trip["work_ticks_left"]) <= 0:
+				_take_loot(s)
+				_head_back(s)
+
+
+func _set_position(s: Dictionary) -> void:
+	var trip: Dictionary = s["trip"]
+	var origin: Vector2 = trip["origin"]
+	var dest: Vector2 = trip["dest"]
+	var t: float = float(trip["progress_m"]) / maxf(float(trip["distance_m"]), 1.0)
+	var pos: Vector2 = origin.lerp(dest, t) if trip["leg"] == &"out" else dest.lerp(origin, t)
+	s["x_m"] = pos.x
+	s["y_m"] = pos.y
+	s["exposure"]["zone"] = Geo.zone_index_at(pos)
+
+
+func _arrive(s: Dictionary) -> void:
+	var trip: Dictionary = s["trip"]
+	var building: Dictionary = WorldState.building(String(trip["building"]))
+	s["x_m"] = float(trip["dest"].x)
+	s["y_m"] = float(trip["dest"].y)
+	trip["leg"] = &"search"
+	var hours: float = SEARCH_HOURS * (NIGHT_SEARCH_TIME_MULT if WorldState.phase() == WorldState.PHASE_NIGHT else 1.0)
+	trip["work_ticks_left"] = roundi(hours * 6.0)
+	building["visits"] = int(building["visits"]) + 1
+	if building["locked"]:
+		building["locked"] = false
+		EventBus.emit_event(&"noise", {"x_m": s["x_m"], "y_m": s["y_m"], "radius_m": NOISE_BREAK_DOOR_M, "source": &"door"})
+		EventBus.emit_event(&"door_forced", {"survivor": s["id"], "building": building["id"],
+			"text": "%s forces the door of %s. The noise carries." % [s["name"], building["name"]]})
+
+
+func _take_loot(s: Dictionary) -> void:
+	var building: Dictionary = WorldState.building(String(s["trip"]["building"]))
+	var share: float = minf(SEARCH_SHARE_MAX, SEARCH_SHARE_BASE + SEARCH_SHARE_PER_SKILL * Body.skill(s, "scavenging"))
+	if WorldState.phase() == WorldState.PHASE_NIGHT:
+		share *= NIGHT_SEARCH_SHARE_MULT
+	var capacity: float = CARRY_KG * clampf(Body.work_speed(s), MIN_SPEED_MULT, 1.0) - _carried_kg(s)
+	var category_kg: Dictionary = {}
+	for item: String in _loot_order():
+		var available: float = Stores.total(building["loot"], item) * share
+		if available <= Stores.EPSILON or capacity <= 0.0:
+			continue
+		var row: Dictionary = Data.entry("items", item)
+		var category: String = row["category"]
+		var room_kg: float = minf(capacity, float(CATEGORY_KG_CAP.get(category, 10.0)) - float(category_kg.get(category, 0.0)))
+		var qty: float = minf(available, Stores.qty_for_weight(item, room_kg))
+		if String(row["unit"]) in ["count", "rounds", "units"]:
+			qty = floorf(qty)
+		if qty <= Stores.EPSILON:
+			continue
+		Stores.add_lots(s["carried"], item, Stores.take_lots(building["loot"], item, qty))
+		var kg: float = Stores.weight_kg(item, qty)
+		capacity -= kg
+		category_kg[category] = float(category_kg.get(category, 0.0)) + kg
+
+
+## Gear the group lacks jumps the queue, right after medicine.
+func _loot_order() -> Array[String]:
+	var order: Array[String] = LOOT_PRIORITY.duplicate()
+	for item: String in WANTED_GEAR:
+		if Stores.total(WorldState.stores, item) < float(WANTED_GEAR[item]):
+			order.erase(item)
+			order.insert(order.find("ammo"), item)
+	return order
+
+
+func _head_back(s: Dictionary) -> void:
+	var trip: Dictionary = s["trip"]
+	trip["leg"] = &"back"
+	trip["progress_m"] = 0.0
+	trip["origin"] = Geo.base_center_m()
+	trip["dest"] = Vector2(float(s["x_m"]), float(s["y_m"]))
+	trip["distance_m"] = Geo.street_distance_m(trip["origin"], trip["dest"])
+
+
+func _return_home(s: Dictionary) -> void:
+	var trip: Dictionary = s["trip"]
+	var building: Dictionary = WorldState.building(String(trip["building"]))
+	var summary: Dictionary = Stores.snapshot(s["carried"])
+	var packed: Dictionary = trip.get("packed", {})
+	for item: String in packed:
+		summary[item] = float(summary.get(item, 0.0)) - float(packed[item])
+		if float(summary[item]) <= 0.01:
+			summary.erase(item)
+	var kg: float = _carried_kg(s)
+	Stores.merge_into(WorldState.stores, s["carried"])
+	if s["weapon"] != "":
+		Stores.add(WorldState.stores, String(s["weapon"]), 1.0)
+		Stores.add(WorldState.stores, "ammo", float(s["ammo"]))
+		s["weapon"] = ""
+		s["ammo"] = 0
+	var hours: float = float(WorldState.tick - int(trip["started_tick"])) / 6.0
+	s["location"] = &"base"
+	s["trip"] = {}
+	_place_at_base(s)
+	EventBus.emit_event(&"scavenge_returned", {"survivor": s["id"], "building": building.get("id", ""),
+		"loot": summary, "hours": hours, "kg": kg,
+		"text": "%s is back from %s after %.1f h with %.1f kg: %s." % [s["name"], building.get("name", "town"), hours, kg, _loot_text(summary)]})
+
+
+## Infected cut a trip short: anyone hurt heads straight home with what they have.
+func _on_encounter(payload: Dictionary) -> void:
+	var s: Dictionary = WorldState.survivor(String(payload["survivor"]))
+	if s.is_empty() or s["status"] != &"ok" or s["location"] != &"away":
+		return
+	if not payload.get("abort_trip", false) or s["trip"].get("leg", &"") == &"back":
+		return
+	_head_back(s)
+
+
+func _carried_kg(s: Dictionary) -> float:
+	var kg: float = 0.0
+	var carried: Dictionary = s["carried"]
+	for item: String in carried:
+		kg += Stores.weight_kg(item, Stores.total(carried, item))
+	return kg
+
+
+func _place_at_base(s: Dictionary) -> void:
+	var pos: Vector2 = Geo.base_center_m()
+	s["x_m"] = pos.x
+	s["y_m"] = pos.y
+
+
+static func _loot_text(summary: Dictionary) -> String:
+	if summary.is_empty():
+		return "nothing"
+	var parts: PackedStringArray = []
+	for item: String in summary:
+		var row: Dictionary = Data.entry("items", item)
+		var qty: float = summary[item]
+		var whole: bool = qty >= 10.0 or String(row["unit"]) in ["count", "rounds", "units"]
+		var amount: String = str(roundi(qty)) if whole else str(snappedf(qty, 0.1))
+		var unit: String = "" if String(row["unit"]) == "count" else " " + String(row["unit"])
+		parts.append("%s %s%s" % [String(row["name"]).to_lower(), amount, unit])
+	return ", ".join(parts)
 
 
 func _on_set_job(payload: Dictionary) -> void:

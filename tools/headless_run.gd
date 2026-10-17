@@ -7,12 +7,14 @@ const SimRun := preload("res://core/sim_run.gd")
 
 var _days_started: int = 0
 var _clock_errors: int = 0
+var _verbose: bool = false
 
 
 ## Returns the process exit code.
 func run() -> int:
 	var run_seed: int = SimRun.int_arg("seed", 42)
 	var days: int = SimRun.int_arg("days", 30)
+	_verbose = SimRun.int_arg("verbose", 0) == 1
 	if not Data.errors.is_empty():
 		printerr("Data failed to load; see errors above.")
 		return 1
@@ -28,7 +30,9 @@ func run() -> int:
 	return 0
 
 
-func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
+func _on_bus_event(event_name: StringName, payload: Dictionary) -> void:
+	if _verbose and payload.has("text"):
+		print("%s  %s" % [WorldState.clock_string(), payload["text"]])
 	if event_name == &"day_started":
 		_days_started += 1
 	elif event_name == &"clock_error":

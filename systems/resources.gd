@@ -62,6 +62,7 @@ func tick() -> void:
 		if s["location"] != &"base":
 			if meal_time:
 				s["meals_missed"] = int(s["meals_missed"]) + 1
+			_drink_on_trip(s)
 			continue
 		_drink(s)
 		if meal_time:
@@ -91,6 +92,18 @@ func _drink(s: Dictionary) -> void:
 			if untreated > 0.0:
 				s["drank_untreated_today"] = true
 				drunk += untreated
+	s["water_deficit_l"] = deficit - drunk
+	s["drunk_today_l"] = float(s["drunk_today_l"]) + drunk
+
+
+## Away from base, survivors sip from the bottle they carried out.
+func _drink_on_trip(s: Dictionary) -> void:
+	var deficit: float = float(s["water_deficit_l"])
+	if deficit < DRINK_AT_DEFICIT_L * 2.0:
+		return
+	var drunk: float = 0.0
+	for item: String in SAFE_WATER_ORDER:
+		drunk += Stores.take(s["carried"], item, deficit - drunk)
 	s["water_deficit_l"] = deficit - drunk
 	s["drunk_today_l"] = float(s["drunk_today_l"]) + drunk
 
