@@ -27,7 +27,7 @@ func setup() -> void:
 
 
 func tick() -> void:
-	if WorldState.tick % WorldState.TICKS_PER_DAY != 0 or WorldState.tick == 0:
+	if not WorldState.is_new_day():
 		return
 	var climate: Dictionary = WorldState.climate
 	var indoor_c: float = (float(climate["today_min_c"]) + float(climate["today_max_c"])) / 2.0 - INDOOR_COOLING_C

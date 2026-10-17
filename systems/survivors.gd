@@ -9,6 +9,7 @@ extends "res://core/sim_system.gd"
 const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Decisions := preload("res://core/decisions.gd")
+const Geo := preload("res://core/geo.gd")
 
 const TICK_DAYS: float = 1.0 / 144.0
 const TICK_HOURS: float = 1.0 / 6.0
@@ -117,11 +118,12 @@ func setup() -> void:
 	listen(&"command_add_survivor", _on_add_survivor)
 	for row: Dictionary in Data.table("survivors"):
 		if row.get("role", "") == "starting":
-			WorldState.survivors.append(Body.new_survivor(row))
+			WorldState.survivors.append(_at_base(Body.new_survivor(row)))
 
 
 func tick() -> void:
-	var day_start: bool = WorldState.tick % WorldState.TICKS_PER_DAY == 0
+	var new_day: bool = WorldState.is_new_day()
+	var dawn: bool = WorldState.is_dawn()
 	var medic: Dictionary = _medic_at_base()
 	for s: Dictionary in WorldState.survivors:
 		if s["status"] != &"ok":
@@ -135,8 +137,12 @@ func tick() -> void:
 		_illness(s)
 		_pathogen(s)
 		_stress(s)
-		if day_start and WorldState.tick > 0:
+		if new_day:
 			_daily(s)
+		if dawn:
+			# Sleep is tallied each morning over the night just gone.
+			s["sleep_debt_h"] = clampf(float(s["sleep_debt_h"]) + SLEEP_NEED_H - float(s["slept_h"]), 0.0, MAX_SLEEP_DEBT_H)
+			s["slept_h"] = 0.0
 		_check_death(s)
 
 
@@ -232,6 +238,8 @@ func _report_bite_if_back(s: Dictionary) -> void:
 				injury["disguised_as"] = &"cut"
 		return
 	pathogen["known"] = true
+	for injury: Dictionary in s["injuries"]:
+		injury.erase("disguised_as")
 	EventBus.emit_event(&"bite_reported", {"survivor": s["id"],
 		"text": "%s shows the group a bite on the %s." % [s["name"], pathogen["location"]]})
 	_ask_about_bite(s, "%s has been bitten on the %s. There is no cure. What do you do?" % [s["name"], pathogen["location"]], true)
@@ -465,10 +473,8 @@ func _group_stress(amount: float, except: Dictionary = {}) -> void:
 
 # --- Daily ---
 
-## At 06:00, after each night: sleep debt, infection and illness rolls, leaving.
+## At midnight: infection and illness rolls, and whether anyone leaves.
 func _daily(s: Dictionary) -> void:
-	s["sleep_debt_h"] = clampf(float(s["sleep_debt_h"]) + SLEEP_NEED_H - float(s["slept_h"]), 0.0, MAX_SLEEP_DEBT_H)
-	s["slept_h"] = 0.0
 	for injury: Dictionary in s["injuries"]:
 		if injury["infection"] != &"none":
 			continue
@@ -536,13 +542,20 @@ func _drop_carried(s: Dictionary) -> void:
 	s["ammo"] = 0
 
 
+func _at_base(s: Dictionary) -> Dictionary:
+	var pos: Vector2 = Geo.base_center_m()
+	s["x_m"] = pos.x
+	s["y_m"] = pos.y
+	return s
+
+
 # --- Commands and decisions ---
 
 func _on_add_survivor(payload: Dictionary) -> void:
 	var row: Dictionary = Data.entry("survivors", String(payload["id"]))
 	if row.is_empty() or not WorldState.survivor(String(payload["id"])).is_empty():
 		return
-	var s: Dictionary = Body.new_survivor(row)
+	var s: Dictionary = _at_base(Body.new_survivor(row))
 	WorldState.survivors.append(s)
 	if payload.get("bitten", false):
 		s["injuries"].append(Body.new_injury(&"bite", "arm", 0.0))

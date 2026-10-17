@@ -5,7 +5,8 @@ extends Node
 const MINUTES_PER_TICK: int = 10
 const TICKS_PER_DAY: int = 144
 const MINUTES_PER_DAY: int = 24 * 60
-## Tick 0 is Day 0 at 06:00. Each day runs 144 ticks, from 06:00 to the next 06:00.
+## Tick 0 is Day 0 at 06:00. Day numbers change at midnight, like a calendar, so
+## Day 0 is 18 hours long and every later day 24 (144 ticks).
 const DAY_START_MINUTE: int = 6 * 60
 ## The day phase runs 06:00 to 18:00; night runs 18:00 to 06:00.
 const DAYTIME_START_MINUTE: int = 6 * 60
@@ -117,7 +118,17 @@ func phase() -> StringName:
 
 @warning_ignore("integer_division")
 static func day_at(at_tick: int) -> int:
-	return at_tick / TICKS_PER_DAY
+	return (DAY_START_MINUTE + at_tick * MINUTES_PER_TICK) / MINUTES_PER_DAY
+
+
+## True on the first tick of a new day (00:00), not on tick 0.
+func is_new_day() -> bool:
+	return tick > 0 and minute_of_day() == 0
+
+
+## True at 06:00 each morning after the first.
+func is_dawn() -> bool:
+	return tick > 0 and minute_of_day() == DAYTIME_START_MINUTE
 
 
 static func minute_of_day_at(at_tick: int) -> int:

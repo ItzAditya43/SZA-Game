@@ -88,7 +88,7 @@ func step() -> void:
 	WorldState.tick += 1
 	var now: int = WorldState.tick
 	if WorldState.day_at(now) != WorldState.day_at(previous_tick):
-		EventBus.emit_event(&"day_started", {"day": WorldState.day_at(now)})
+		EventBus.emit_event(&"day_started", {"day": WorldState.day_at(now), "text": "Day %d begins." % WorldState.day_at(now)})
 	var previous_phase: StringName = WorldState.phase_at(previous_tick)
 	var phase: StringName = WorldState.phase_at(now)
 	if phase != previous_phase:

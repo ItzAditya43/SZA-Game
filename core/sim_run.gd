@@ -13,6 +13,7 @@ const SYSTEM_SCRIPTS: Array[Script] = [
 	preload("res://systems/town.gd"),
 	preload("res://systems/base.gd"),
 	preload("res://systems/jobs.gd"),
+	preload("res://systems/infected.gd"),
 	preload("res://systems/survivors.gd"),
 	preload("res://systems/resources.gd"),
 ]

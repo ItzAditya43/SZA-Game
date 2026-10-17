@@ -8,15 +8,17 @@ const EventLog := preload("res://ui/event_log.gd")
 const SurvivorPanel := preload("res://ui/survivor_panel.gd")
 const MapGrid := preload("res://ui/map_grid.gd")
 const BuildingPanel := preload("res://ui/building_panel.gd")
+const DecisionPanel := preload("res://ui/decision_panel.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
-const LOG_HEIGHT: float = 170.0
+const LOG_HEIGHT: float = 140.0
 
 var ui_state: UiState = UiState.new()
 var tabs: TabContainer
 var left: VBoxContainer
 var map: MapGrid
 var building_panel: BuildingPanel
+var decision_panel: DecisionPanel
 
 
 func _ready() -> void:
@@ -60,6 +62,13 @@ func _ready() -> void:
 	ui_state.building_selected.connect(func(id: String) -> void:
 		if id != "":
 			tabs.current_tab = building_panel.get_index())
+	decision_panel = DecisionPanel.new()
+	decision_panel.name = "Decisions"
+	tabs.add_child(decision_panel)
+	decision_panel.pending_changed.connect(func(count: int) -> void:
+		tabs.set_tab_title(decision_panel.get_index(), "Decisions (%d)" % count if count > 0 else "Decisions")
+		if count > 0:
+			tabs.current_tab = decision_panel.get_index())
 
 	var log_panel: EventLog = EventLog.new()
 	log_panel.custom_minimum_size = Vector2(0, LOG_HEIGHT)
@@ -70,6 +79,14 @@ func _add_map() -> void:
 	map = MapGrid.new()
 	map.ui_state = ui_state
 	left.add_child(map)
+	var toggle: CheckBox = CheckBox.new()
+	toggle.text = "Show infected per zone"
+	toggle.button_pressed = true
+	toggle.focus_mode = Control.FOCUS_NONE
+	toggle.toggled.connect(func(on: bool) -> void:
+		map.show_infected = on
+		map.queue_redraw())
+	left.add_child(toggle)
 	var legend: Label = Label.new()
 	legend.add_theme_font_size_override("font_size", 12)
 	legend.modulate = Color(1, 1, 1, 0.7)

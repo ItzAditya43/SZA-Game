@@ -69,6 +69,7 @@ func _check_death_from_thirst() -> void:
 
 func _check_plenty_of_water() -> void:
 	start(4)
+	_set_all_jobs(&"rest", &"rest")
 	Stores.add(WorldState.stores, "water_bottled", 500.0)
 	Stores.add(WorldState.stores, "packaged_food", 100000.0)
 	TickLoop.run_headless(6 * WorldState.TICKS_PER_DAY)

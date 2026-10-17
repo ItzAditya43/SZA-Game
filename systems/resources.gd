@@ -52,7 +52,7 @@ func setup() -> void:
 
 func tick() -> void:
 	var minute: int = WorldState.minute_of_day()
-	if WorldState.tick % WorldState.TICKS_PER_DAY == 0 and WorldState.tick > 0:
+	if WorldState.is_new_day():
 		_close_day()
 	_spoil()
 	var meal_time: bool = MEAL_MINUTES.has(minute)
@@ -131,7 +131,7 @@ func _spoil() -> void:
 			"text": "%s spoiled in the heat (%s %s lost)." % [row["name"], _fmt(float(spoiled[item])), row["unit"]]})
 
 
-## At 06:00: score yesterday's rations, then reset the daily intake counters.
+## At midnight: score yesterday's rations, then reset the daily intake counters.
 func _close_day() -> void:
 	var group: Array = WorldState.group()
 	var full: float = float(FOOD_RATIONS[&"full"]) * FULL_RATION_SHARE

@@ -55,6 +55,8 @@ static func new_survivor(row: Dictionary) -> Dictionary:
 		"outdoors": false,
 		"asleep": false,
 		"location": &"base",  # base | away
+		"x_m": 0.0,
+		"y_m": 0.0,
 		"trip": {},
 		"carried": {},
 		"weapon": "",

@@ -4,7 +4,7 @@ extends PanelContainer
 
 const LOG_LINES: int = 40
 ## Bookkeeping events the player does not need to read.
-const HIDDEN_EVENTS: Array[StringName] = [&"speed_changed", &"policy_changed", &"decision_made", &"command_set_job",
+const HIDDEN_EVENTS: Array[StringName] = [&"phase_changed", &"speed_changed", &"policy_changed", &"decision_made", &"command_set_job",
 	&"command_set_policy", &"command_move_base", &"command_add_survivor", &"encounter_avoided"]
 
 var _view: RichTextLabel

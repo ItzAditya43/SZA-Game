@@ -30,13 +30,14 @@ func tick() -> void:
 	var now: int = WorldState.tick
 	if _last_tick != -1 and now != _last_tick + 1:
 		_report("Clock jumped from tick %d to %d" % [_last_tick, now])
-	if WorldState.day() * WorldState.TICKS_PER_DAY + now % WorldState.TICKS_PER_DAY != now:
-		_report("Day %d does not match tick %d" % [WorldState.day(), now])
+	var elapsed_minutes: int = WorldState.DAY_START_MINUTE + now * WorldState.MINUTES_PER_TICK
+	if WorldState.day() * WorldState.MINUTES_PER_DAY + WorldState.minute_of_day() != elapsed_minutes:
+		_report("Day %d %d min does not match tick %d" % [WorldState.day(), WorldState.minute_of_day(), now])
 	var minute: int = WorldState.minute_of_day()
 	if minute % WorldState.MINUTES_PER_TICK != 0 or minute < 0 or minute >= WorldState.MINUTES_PER_DAY:
 		_report("Minute of day %d is off the 10-minute grid" % minute)
 	_last_tick = now
-	if now % WorldState.TICKS_PER_DAY == 0:
+	if WorldState.is_new_day():
 		_start_day(WorldState.day())
 	_update_temperature()
 
