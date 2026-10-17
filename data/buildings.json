@@ -1,0 +1,14 @@
+[
+  {
+    "id": "pharmacy",
+    "count": 2,
+    "danger": 0.7,
+    "daily_looted_rate": 0.15,
+    "base_defense": 15,
+    "loot": [
+      { "item": "antibiotics", "min": 2, "max": 6 },
+      { "item": "bandages",    "min": 5, "max": 15 },
+      { "item": "painkillers", "min": 3, "max": 10 }
+    ]
+  }
+]
