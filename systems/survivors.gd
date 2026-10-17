@@ -64,11 +64,11 @@ const STRESS_PER_DAY: Dictionary = {
 	"thirsty": 6.0, "dehydrated": 12.0, "hungry": 4.0, "weak": 8.0, "wounded": 4.0,
 	"infection": 8.0, "ill": 6.0, "sleep_deprived": 6.0, "exhausted": 4.0,
 }
-const STRESS_RELIEF_SLEEPING_PER_DAY: float = 4.0
-const STRESS_RELIEF_RESTING_PER_DAY: float = 3.0
+const STRESS_RELIEF_SLEEPING_PER_DAY: float = 8.0
+const STRESS_RELIEF_RESTING_PER_DAY: float = 5.0
 ## With nothing wrong, stress eases by this much a day.
-const STRESS_RELIEF_CALM_PER_DAY: float = 2.0
-const STRESS_ON_GROUP_DEATH: float = 20.0
+const STRESS_RELIEF_CALM_PER_DAY: float = 5.0
+const STRESS_ON_GROUP_DEATH: float = 15.0
 const STRESS_ON_MERCY_KILLING: float = 25.0
 const STRESS_ON_EXILE: float = 15.0
 const STRESS_ON_QUARANTINE: float = 10.0

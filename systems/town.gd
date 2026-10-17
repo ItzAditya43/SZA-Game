@@ -13,6 +13,8 @@ const COUNTED_UNITS: Array[String] = ["count", "rounds", "units"]
 const STRIPPED_SHARE: float = 0.1
 ## Buildings are shuttered and shaded: this much cooler than the day's mean air.
 const INDOOR_COOLING_C: float = 3.0
+## Once the taps fail, other survivors draw on every roof tank in town.
+const TANK_DRAWN_BY_OTHERS_PER_DAY: float = 0.08
 
 
 func setup() -> void:
@@ -35,6 +37,8 @@ func tick() -> void:
 		if building["id"] == WorldState.base.get("building", ""):
 			continue
 		_looted_by_others(building)
+		if not WorldState.infrastructure.get("mains_on", true):
+			building["tank_l"] = float(building["tank_l"]) * (1.0 - TANK_DRAWN_BY_OTHERS_PER_DAY)
 		Stores.age_and_spoil(building["loot"], 1.0, indoor_c)
 		_check_stripped(building)
 

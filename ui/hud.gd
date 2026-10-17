@@ -10,6 +10,7 @@ const MapGrid := preload("res://ui/map_grid.gd")
 const BuildingPanel := preload("res://ui/building_panel.gd")
 const DecisionPanel := preload("res://ui/decision_panel.gd")
 const BasePanel := preload("res://ui/base_panel.gd")
+const EndScreen := preload("res://ui/end_screen.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
 const LOG_HEIGHT: float = 140.0
@@ -20,6 +21,7 @@ var left: VBoxContainer
 var map: MapGrid
 var building_panel: BuildingPanel
 var decision_panel: DecisionPanel
+var end_screen: EndScreen
 
 
 func _ready() -> void:
@@ -77,6 +79,9 @@ func _ready() -> void:
 	var log_panel: EventLog = EventLog.new()
 	log_panel.custom_minimum_size = Vector2(0, LOG_HEIGHT)
 	column.add_child(log_panel)
+
+	end_screen = EndScreen.new()
+	add_child(end_screen)
 
 
 func _add_map() -> void:

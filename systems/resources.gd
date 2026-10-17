@@ -9,8 +9,11 @@ const Stores := preload("res://core/stores.gd")
 
 const TICK_DAYS: float = 1.0 / 144.0
 
-## Daily food per person under each ration order, in kcal.
-const FOOD_RATIONS: Dictionary = {&"full": 2500.0, &"reduced": 1800.0, &"half": 1200.0, &"minimal": 600.0}
+## Most a person eats in a day under each ration order, in kcal. Full covers hard
+## physical work (3,000-3,500 kcal); people eat only what their body is short of.
+const FOOD_RATIONS: Dictionary = {&"full": 3000.0, &"reduced": 2000.0, &"half": 1500.0, &"minimal": 800.0}
+## Eat up to this much beyond today's shortfall, so nobody starts the day empty.
+const MEAL_HEADROOM_KCAL: float = 500.0
 ## Daily drinking water per person under each ration order, in litres.
 const WATER_RATIONS: Dictionary = {&"as_needed": INF, &"4L": 4.0, &"3L": 3.0, &"2L": 2.0, &"1L": 1.0}
 const POLICY_VALUES: Dictionary = {
@@ -35,8 +38,8 @@ const DRINK_AT_DEFICIT_L: float = 0.25
 ## Untreated water is drunk only this thirsty, unless boiling is switched off.
 const DESPERATE_DEFICIT_L: float = 2.0
 const SAFE_WATER_ORDER: Array[String] = ["water_boiled", "water_bottled"]
-## A day counts as fully rationed when everyone ate at least this share of the full ration.
-const FULL_RATION_SHARE: float = 0.9
+## A day counts as fully rationed when the order was "full" and nobody went to bed hungry.
+const FULL_RATION_MAX_DEBT_KCAL: float = 2000.0
 ## Stores sit indoors, out of the sun.
 const STORE_SHADE_C: float = 3.0
 ## Smaller losses spoil quietly.
@@ -137,12 +140,15 @@ func _drink_on_trip(s: Dictionary) -> void:
 
 
 func _eat(s: Dictionary, meals: int) -> void:
-	var wanted: float = float(FOOD_RATIONS[WorldState.policies[&"food_ration"]]) / float(MEAL_MINUTES.size()) * meals
+	var allowance: float = float(FOOD_RATIONS[WorldState.policies[&"food_ration"]]) / float(MEAL_MINUTES.size()) * meals
+	var wanted: float = minf(allowance, float(s["kcal_debt"]) + MEAL_HEADROOM_KCAL)
+	if wanted <= 0.0:
+		return
 	var eaten: float = 0.0
 	for item: String in EATING_ORDER:
 		var got: float = Stores.take(WorldState.stores, item, wanted - eaten)
 		if got > 0.0 and item == "cooked_meal":
-			s["stress"] = maxf(0.0, float(s["stress"]) - COOKED_MEAL_STRESS_RELIEF * got / (wanted / meals))
+			s["stress"] = maxf(0.0, float(s["stress"]) - COOKED_MEAL_STRESS_RELIEF * minf(1.0, got / (allowance / meals)))
 		eaten += got
 		if eaten >= wanted - Stores.EPSILON:
 			break
@@ -250,8 +256,8 @@ func _spoil() -> void:
 ## At midnight: score yesterday's rations, then reset the daily intake counters.
 func _close_day() -> void:
 	var group: Array = WorldState.group()
-	var full: float = float(FOOD_RATIONS[&"full"]) * FULL_RATION_SHARE
-	if not group.is_empty() and group.all(func(s: Dictionary) -> bool: return float(s["kcal_eaten_today"]) >= full):
+	var full: bool = WorldState.policies[&"food_ration"] == &"full"
+	if full and not group.is_empty() and group.all(func(s: Dictionary) -> bool: return float(s["kcal_debt"]) < FULL_RATION_MAX_DEBT_KCAL):
 		WorldState.stats["full_ration_days"] = int(WorldState.stats["full_ration_days"]) + 1
 	for s: Dictionary in WorldState.survivors:
 		s["drunk_today_l"] = 0.0

@@ -9,7 +9,7 @@ for test in tests/test_milestone_*.gd; do
 	summary=$(echo "$out" | grep "checks passed")
 	echo "$(basename "$test" .gd): ${summary:-no summary} (exit $code)"
 	echo "$out" | grep "^FAIL" | sed 's/^/    /'
-	errors=$(echo "$out" | grep -E "SCRIPT ERROR|Parse Error|Compile Error" | grep -v "deliberately")
+	errors=$(echo "$out" | grep -E "SCRIPT ERROR|Parse Error|Compile Error|^ERROR" | grep -v "Clock jumped")
 	if [ -n "$errors" ]; then
 		echo "$errors" | sort | uniq -c | head -5 | sed 's/^/    /'
 		code=1

@@ -43,9 +43,11 @@ func events_named(event_name: StringName) -> Array[Dictionary]:
 	return captured.filter(func(e: Dictionary) -> bool: return e["name"] == event_name)
 
 
-## Starts a quiet run: no decisions left waiting and nobody away.
+## Starts a sandbox run: it never ends in a win or loss, so a check can run it as
+## long as it likes even after everyone has died.
 func start(run_seed: int) -> void:
 	SimRun.start(run_seed)
+	WorldState.flags["sandbox"] = true
 	captured.clear()
 
 

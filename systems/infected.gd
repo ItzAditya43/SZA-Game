@@ -46,7 +46,7 @@ const HEAT_WAVE_DIE_OFF_PER_DAY: float = 0.005
 
 # --- Encounters ---
 ## Chance per tick of meeting infected = 1 - exp(-K x density x activity x modifiers), density per km².
-const ENCOUNTER_K: float = 2.0e-5
+const ENCOUNTER_K: float = 2.4e-5
 ## Searching inside: infected trapped in the building matter more than the street.
 const INSIDE_EXPOSURE_BASE: float = 0.6
 const INSIDE_EXPOSURE_PER_DANGER: float = 1.5
@@ -73,7 +73,7 @@ const INJURY_TYPES: Array[Dictionary] = [
 ]
 const WOUND_LOCATIONS: Dictionary = {"arm": 0.45, "leg": 0.35, "torso": 0.15, "neck": 0.05}
 const BITE_LOCATIONS: Dictionary = {"arm": 0.5, "leg": 0.3, "torso": 0.12, "neck": 0.08}
-const STRESS_BY_OUTCOME: Dictionary = {&"avoided": 3.0, &"fought_off": 6.0, &"injured": 12.0, &"bitten": 25.0, &"killed": 0.0}
+const STRESS_BY_OUTCOME: Dictionary = {&"avoided": 2.0, &"fought_off": 5.0, &"injured": 10.0, &"bitten": 20.0, &"killed": 0.0}
 
 
 @warning_ignore("integer_division")

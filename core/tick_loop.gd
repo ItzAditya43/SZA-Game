@@ -82,8 +82,10 @@ func auto_pause_on(event_name: StringName) -> void:
 		EventBus.event.connect(_on_bus_event)
 
 
-## Advances the simulation by one tick.
+## Advances the simulation by one tick. Once the run is won or lost, time stops.
 func step() -> void:
+	if not WorldState.is_running():
+		return
 	var previous_tick: int = WorldState.tick
 	WorldState.tick += 1
 	var now: int = WorldState.tick

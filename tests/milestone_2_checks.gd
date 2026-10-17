@@ -32,13 +32,14 @@ func _check_meals_and_drinking() -> void:
 	start(2)
 	TickLoop.run_headless(ticks_for_hours(2.0) + 1)  # through the 08:00 meal
 	var at_base: Array = WorldState.survivors.filter(func(s: Dictionary) -> bool: return s["location"] == &"base")
-	var ate: bool = at_base.size() >= 4 and at_base.all(func(s: Dictionary) -> bool: return float(s["kcal_eaten_today"]) > 800.0)
-	expect("everyone at base eats about a third of the full ration at 08:00", ate,
+	var ate: bool = at_base.size() >= 4 and at_base.all(func(s: Dictionary) -> bool:
+		return float(s["kcal_eaten_today"]) > 500.0 and float(s["kcal_debt"]) < 100.0)
+	expect("at 08:00 everyone at base eats what they have burned since 06:00 (and a little more)", ate,
 		str(WorldState.survivors.map(func(s: Dictionary) -> int: return roundi(float(s["kcal_eaten_today"])))))
 	var farhan: Dictionary = WorldState.survivor("farhan")
 	TickLoop.run_headless(ticks_for_hours(10.0))
 	expect("a scavenger out at mealtime eats the missed meal on return", farhan["location"] == &"base"
-		and float(farhan["kcal_eaten_today"]) > 800.0, "%d kcal" % roundi(float(farhan["kcal_eaten_today"])))
+		and float(farhan["kcal_eaten_today"]) > 500.0, "%d kcal" % roundi(float(farhan["kcal_eaten_today"])))
 	var drank: bool = WorldState.survivors.all(func(s: Dictionary) -> bool: return float(s["drunk_today_l"]) > 0.5 and float(s["water_deficit_l"]) < 1.0)
 	expect("survivors drink through the day and stay hydrated while there is water", drank,
 		str(WorldState.survivors.map(func(s: Dictionary) -> String: return "%.1f L" % float(s["drunk_today_l"]))))
@@ -70,6 +71,8 @@ func _check_death_from_thirst() -> void:
 func _check_plenty_of_water() -> void:
 	start(4)
 	_set_all_jobs(&"rest", &"rest")
+	for zone: Dictionary in WorldState.zones:
+		zone["infected"] = 0.0
 	Stores.add(WorldState.stores, "water_bottled", 500.0)
 	Stores.add(WorldState.stores, "packaged_food", 100000.0)
 	TickLoop.run_headless(6 * WorldState.TICKS_PER_DAY)

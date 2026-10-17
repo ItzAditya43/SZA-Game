@@ -1,1 +1,79 @@
-[]
+[
+  { "id": "lockdown", "title": "Lockdown",
+    "trigger": { "day_min": 0, "day_max": 0, "hour": 7 },
+    "text": "Radio: the district collector orders a total lockdown. Stay indoors. Police are setting up checkpoints on the highway.",
+    "effects": [] },
+
+  { "id": "panic_buying", "title": "Panic buying",
+    "trigger": { "day_min": 0, "day_max": 0, "hour": 11 },
+    "text": "Panic buying empties the kirana stores: queues, shouting, shutters slammed down by noon.",
+    "effects": [ { "type": "scale_loot", "building_type": "kirana", "factor": 0.6 } ] },
+
+  { "id": "bus_stand_gunshots", "title": "Gunshots at the bus stand",
+    "trigger": { "day_min": 1, "day_max": 1, "hour": 19 },
+    "text": "Gunshots at the bus stand: police firing into a crowd of the sick. The noise carries across town.",
+    "effects": [ { "type": "noise", "landmark": "Bus stand", "radius_m": 600, "source": "gunshot" } ] },
+
+  { "id": "pharmacy_raid", "title": "Pharmacy raided",
+    "trigger": { "day_min": 2, "day_max": 5, "hour": 22, "chance_per_day": 0.35 },
+    "text": "A gang breaks into New Life Pharmacy at night. Shots are fired; half the shelves are cleared.",
+    "effects": [
+      { "type": "scale_loot", "building": "pharmacy_02", "factor": 0.5 },
+      { "type": "noise", "building": "pharmacy_02", "radius_m": 600, "source": "gunshot" } ] },
+
+  { "id": "relief_camp_opens", "title": "Relief camp",
+    "trigger": { "day_min": 3, "day_max": 3, "hour": 10 },
+    "text": "Radio: a relief camp opens at the Government Higher Secondary School, with rice, water and medical aid. Soldiers guard the gate.",
+    "effects": [
+      { "type": "add_loot", "building": "school_01", "items": { "rice": 60000, "water_bottled": 300, "ors": 40, "bandages": 20, "antibiotics": 4 } },
+      { "type": "set_danger", "building": "school_01", "value": 0.15 },
+      { "type": "set_flag", "flag": "relief_camp" } ] },
+
+  { "id": "relief_camp_overrun", "title": "Camp overrun",
+    "trigger": { "day_min": 8, "day_max": 10, "hour": 3, "chance_per_day": 0.5, "requires": [ { "type": "flag", "flag": "relief_camp" } ] },
+    "text": "Screams from the relief camp before dawn: an evacuee who hid a bite turned in the crowded hall. The camp is overrun; its supplies are left behind among the infected.",
+    "effects": [
+      { "type": "add_infected", "building": "school_01", "count": 400 },
+      { "type": "set_danger", "building": "school_01", "value": 0.85 },
+      { "type": "noise", "building": "school_01", "radius_m": 600, "source": "gunshot" } ] },
+
+  { "id": "checkpoint_abandoned", "title": "Checkpoint abandoned",
+    "trigger": { "day_min": 10, "day_max": 12, "hour": 9, "chance_per_day": 0.5 },
+    "text": "The police checkpoint on the highway is empty. The officers left in a hurry; the station's armoury door hangs open.",
+    "effects": [
+      { "type": "add_loot", "building": "police_station_01", "items": { "rifle": 1, "ammo": 40 } },
+      { "type": "set_danger", "building": "police_station_01", "value": 0.3 } ] },
+
+  { "id": "last_broadcast", "title": "The radio goes silent",
+    "trigger": { "day_min": 12, "day_max": 14, "hour": 20, "chance_per_day": 0.5 },
+    "text": "The district radio stops mid-sentence and does not come back. Nobody is coming.",
+    "effects": [ { "type": "group_stress", "value": 6 } ] },
+
+  { "id": "stranger", "title": "A stranger at the gate",
+    "trigger": { "day_min": 4, "day_max": 20, "hour": 17, "chance_per_day": 0.1,
+      "requires": [ { "type": "group_size_at_most", "value": 5 } ] },
+    "text": "A young woman calls from the street: Kavya, a schoolteacher, alone and out of water. She asks to join you.",
+    "decision": {
+      "text": "Kavya, a schoolteacher, asks to join the group. She says she is not hurt. Let her in?",
+      "options": [
+        { "id": "accept", "label": "Let her in", "effects": [ { "type": "add_survivor", "id": "kavya", "bitten_chance": 0.2 } ] },
+        { "id": "refuse", "label": "Turn her away", "effects": [ { "type": "group_stress", "value": 4 } ] } ] } },
+
+  { "id": "market_fire", "title": "Market fire",
+    "trigger": { "day_min": 6, "day_max": 28, "hour": 15, "chance_per_day": 0.06,
+      "requires": [ { "type": "max_temp_at_least", "value": 38 } ] },
+    "text": "A cooking fire left burning in a looted shop catches in the dry afternoon heat. The market burns for hours.",
+    "effects": [
+      { "type": "destroy_loot", "landmark": "Market", "count": 3 },
+      { "type": "kill_infected", "landmark": "Market", "share": 0.15 } ] },
+
+  { "id": "heat_wave", "title": "Heat wave",
+    "trigger": { "day_min": 16, "day_max": 26, "hour": 6, "chance_per_day": 0.1 },
+    "text": "A heat wave settles over the plains: 3 °C hotter for the next four days. Water need climbs; weakened infected start to die in the streets.",
+    "effects": [ { "type": "heat_wave", "bonus_c": 3, "days": 4 } ] },
+
+  { "id": "storm", "title": "Pre-monsoon storm",
+    "trigger": { "day_min": 18, "day_max": 29, "hour": 16, "chance_per_day": 0.12 },
+    "text": "A pre-monsoon thunderstorm: 25 mm of rain in an hour. Roof tanks and every open container fill.",
+    "effects": [ { "type": "rain", "mm": 25 } ] }
+]

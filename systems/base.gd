@@ -30,13 +30,13 @@ const ALERT_DECAY_PER_HOUR: float = 0.1
 const LIGHT_ALERT: float = 0.1
 
 # --- Night attacks (rolled each night hour) ---
-const ATTACK_BASE_PER_HOUR: float = 0.04
+const ATTACK_BASE_PER_HOUR: float = 0.05
 ## Zone population at which the base attack chance applies as is.
 const ATTACK_DENSITY_REF: float = 500.0
 const DEFENSE_SCALE: float = 100.0
-const ATTACK_SHARE_OF_ZONE: float = 0.008
+const ATTACK_SHARE_OF_ZONE: float = 0.010
 const ATTACK_MIN_SIZE: int = 2
-const STRENGTH_PER_INFECTED: float = 3.0
+const STRENGTH_PER_INFECTED: float = 3.5
 ## Repelled attacks wear barricades down by this share of their strength.
 const BARRICADE_WEAR: float = 0.2
 const GUARD_HURT_CHANCE: float = 0.1
@@ -46,7 +46,7 @@ const ASLEEP_HURT_MULT: float = 1.3
 const BREACH_KILLED_SHARE: float = 0.15
 const BREACH_BITTEN_SHARE: float = 0.35
 const STRESS_ON_ATTACK: float = 5.0
-const STRESS_ON_BREACH: float = 20.0
+const STRESS_ON_BREACH: float = 15.0
 const GUARD_AMMO_PER_ATTACK: int = 4
 const GUNSHOT_RADIUS_M: float = 600.0
 ## A survivor turning inside base attacks whoever is near.
@@ -171,6 +171,8 @@ func _on_light(payload: Dictionary) -> void:
 # --- Attacks ---
 
 func _maybe_attack() -> void:
+	if WorldState.group().is_empty():
+		return
 	var zone: Dictionary = WorldState.zones[Geo.zone_index_at(Geo.base_center_m())]
 	var count: float = float(zone["infected"])
 	var alert: float = float(WorldState.base["alert"])

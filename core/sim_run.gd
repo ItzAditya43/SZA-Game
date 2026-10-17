@@ -17,6 +17,8 @@ const SYSTEM_SCRIPTS: Array[Script] = [
 	preload("res://systems/infected.gd"),
 	preload("res://systems/survivors.gd"),
 	preload("res://systems/resources.gd"),
+	preload("res://systems/events.gd"),
+	preload("res://systems/outcome.gd"),
 ]
 
 
@@ -42,4 +44,13 @@ static func int_arg(arg_name: String, fallback: int) -> int:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with(prefix) and arg.trim_prefix(prefix).is_valid_int():
 			return arg.trim_prefix(prefix).to_int()
+	return fallback
+
+
+## Reads `--name=value` as text from the user arguments after `--`.
+static func string_arg(arg_name: String, fallback: String) -> String:
+	var prefix: String = "--%s=" % arg_name
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix):
+			return arg.trim_prefix(prefix)
 	return fallback

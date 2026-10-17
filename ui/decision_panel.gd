@@ -6,16 +6,19 @@ extends ScrollContainer
 signal pending_changed(count: int)
 
 var _list: VBoxContainer
-var _shown_key: String = ""
+var _shown_key: String = "-"
 
 
 func _ready() -> void:
+	if _list != null:
+		return
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 10)
 	add_child(_list)
-	EventBus.event.connect(_on_bus_event)
+	if not EventBus.event.is_connected(_on_bus_event):
+		EventBus.event.connect(_on_bus_event)
 	_refresh()
 
 
