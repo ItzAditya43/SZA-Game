@@ -27,13 +27,20 @@ Prototype 1: one town, 4–6 survivors, survive 30 in-game days. Art-free (colou
 ```
 res://
   data/     buildings.json, loot_tables.json, items.json, survivors.json, events.json
+            + town.json (from tools/make_town.py), scenario.json (start state, timings)
   core/     tick_loop.gd, world_state.gd, event_bus.gd, data_loader.gd, rng.gd
+            + sim_run.gd (starts a run), sim_system.gd (system base class),
+              stores.gd, body.gd, geo.gd, decisions.gd (plain-data helpers any system may use)
   systems/  time.gd, survivors.gd, jobs.gd, town.gd, resources.gd,
-            infrastructure.gd, infected.gd, base.gd, events.gd
+            infrastructure.gd, infected.gd, base.gd, events.gd, + outcome.gd
   ui/       map_grid.gd, survivor_panel.gd, building_panel.gd, controls.gd
-  tools/    headless_runner.gd
-  tests/    (simple GDScript test scenes or scripts per milestone)
+            + hud.gd, event_log.gd, base_panel.gd, decision_panel.gd, end_screen.gd, ui_state.gd
+  tools/    headless_runner.gd (+ headless_run.gd), auto_player.gd, screenshot.tscn,
+            make_town.py, run_tests.sh
+  tests/    test_milestone_N.gd (entry) + milestone_N_checks.gd, checks_base.gd
 ```
+
+Run every test with `bash tools/run_tests.sh`. Scripts started with `--script` must not name autoloads directly (they are compiled first): keep them as thin wrappers that `load()` the real code. Player orders reach the simulation only as `command_*` / `decision_made` bus events. See docs/IMPLEMENTATION_NOTES.md for every design call made in Prototype 1.
 
 ## How to finish a milestone
 
