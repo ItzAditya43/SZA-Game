@@ -1,0 +1,7 @@
+# Godot
+.godot/
+*.import
+export_presets.cfg
+
+# Original handoff archive
+survival-sim-handoff.zip

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>World Scrubber</title>
+<style>
+:root{--surface-0:#f5f4ef;--surface-1:#ecebe5;--surface-2:#ffffff;--text-primary:#1f1e1c;--text-secondary:#5f5e5a;--text-danger:#a32d2d;--text-accent:#0c447c;--bg-accent:#e6f1fb;--border:rgba(0,0,0,.12);--border-accent:#378add;--radius:8px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--surface-0:#1a1a19;--surface-1:#242422;--surface-2:#2c2c2a;--text-primary:#f1efe8;--text-secondary:#b4b2a9;--text-danger:#f09595;--text-accent:#b5d4f4;--bg-accent:#0c447c;--border:rgba(255,255,255,.14);--border-accent:#85b7eb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px 16px}
+main{max-width:980px;margin:0 auto}
+h1{font-size:20px;font-weight:500;margin:0 0 4px}
+p.sub{margin:0 0 16px;color:var(--text-secondary);font-size:14px}
+button{font:inherit;font-size:13px;padding:6px 12px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;color:var(--text-primary);cursor:pointer}
+button:hover{background:var(--surface-1)}
+.card{background:var(--surface-1);border-radius:12px;padding:10px}
+.kpi{background:var(--surface-1);border-radius:var(--radius);padding:8px 10px}
+.kpi .l{font-size:12px;color:var(--text-secondary)}.kpi .v{font-size:15px;font-weight:500}
+.g2{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:720px){.g2,.g4{grid-template-columns:minmax(0,1fr)}}
+label{cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+<h1>World scrubber</h1>
+<p class="sub">Reference mock for the survival sim. Scrub from Day 0 to Day 1000 to see how the town, climate, infected, survivors and decisions change. Toggle the signal layers to see what draws the infected. Numbers match GAME_DESIGN.md.</p>
+<div style="display:flex;align-items:center;gap:12px;margin:0 0 8px;">
+<label for="day" style="font-size:13px;color:var(--text-secondary);">Day</label>
+<input type="range" id="day" min="0" max="1000" step="1" value="12" style="flex:1;">
+<span id="dayout" style="font-size:14px;font-weight:500;min-width:64px;text-align:right;">Day 12</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;" id="jumps">
+<button data-d="3">Collapse</button><button data-d="20">Breakdown</button><button data-d="75">Scarcity</button><button data-d="200">Adaptation</button><button data-d="700">Rebuilding</button>
+</div>
+<div class="g4" style="margin-bottom:10px;">
+<div class="kpi"><div class="l">Date and season</div><div class="v" id="k1"></div></div>
+<div class="kpi"><div class="l">Weather</div><div class="v" id="k2"></div></div>
+<div class="kpi"><div class="l">Infected nearby</div><div class="v" id="k3"></div></div>
+<div class="kpi"><div class="l">Main threat</div><div class="v" id="k4"></div></div>
+</div>
+<div class="g2">
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-secondary);margin-bottom:6px;"><span id="vname"></span><span id="util"></span></div>
+<canvas id="cv" width="560" height="380" style="width:100%;height:auto;display:block;border-radius:8px;"></canvas>
+<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;margin-top:8px;color:var(--text-secondary);">
+<label><input type="checkbox" id="Ln" checked> Sound</label>
+<label><input type="checkbox" id="Ll"> Light</label>
+<label><input type="checkbox" id="Ls"> Smell and wind</label>
+<label><input type="checkbox" id="Ld"> Disease risk</label>
+<label><input type="checkbox" id="Lnight"> Night</label>
+</div>
+</div>
+<div class="card" style="font-size:12px;">
+<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-weight:500;font-size:13px;" id="pop"></span><span style="color:var(--text-secondary);" id="phase"></span></div>
+<div id="roster"></div>
+</div>
+</div>
+<div class="g2" style="margin-top:10px;">
+<div class="card" style="font-size:12px;">
+<div style="color:var(--text-secondary);margin-bottom:6px;">Event log · causes and effects</div>
+<div id="log" style="line-height:1.6;"></div>
+</div>
+<div class="card" style="font-size:12px;">
+<div style="color:var(--text-secondary);margin-bottom:6px;">Decision waiting</div>
+<div id="dec" style="font-size:13px;line-height:1.5;margin-bottom:8px;"></div>
+<div style="color:var(--text-secondary);margin-bottom:4px;">Stores</div>
+<div id="stores" style="line-height:1.6;"></div>
+</div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const T=[25,28,34,38,40,32,29,29,30,29,27,25],R=[2,5,10,40,70,180,220,200,170,150,60,15],H=[55,50,45,50,55,80,88,88,85,78,70,60];
+const SEA=m=>m>=2&&m<=4?'Summer':m>=5&&m<=8?'Monsoon':m>=9&&m<=10?'Post-monsoon':'Winter';
+const PH=[
+{n:'Collapse',to:7,threat:'Infected, panic',pop:'Group: 4 survivors',
+ros:[['Meera','Nurse',1800,2200,2.6,3.5,37.0,'Fine',62,4.5],['Arjun','Electrician',2100,3200,3.0,5.0,37.3,'Cut on forearm, cleaned',48,5.5],['Farhan','Mechanic',1500,2600,2.2,4.0,37.1,'Fine; family missing',78,3.5],['Lakshmi','Farmer',1900,2400,2.8,4.0,37.0,'Fine',40,6]],
+log:['06:40 Radio: district lockdown, stay indoors','11:15 Panic buying empties 3 kirana stores → town food stock −18%','19:30 Gunshots near the bus stand → about 300 infected drift toward the market'],
+dec:'The pharmacy is still stocked but 40 infected gather at the market. Go at 13:00 heat, or wait for dark?',
+st:'Water 46 L (bottled) · Food 31,000 kcal · Antibiotics 0 · Fuel 12 L'},
+{n:'Breakdown',to:30,threat:'Infected, injuries',pop:'Group: 6 survivors',
+ros:[['Meera','Nurse',1600,2200,2.4,3.5,37.1,'Fine; treating Arjun',70,4],['Arjun','Electrician',1200,2000,3.2,4.5,38.1,'Deep laceration · bleed 0.2 L/h stopped · infection risk 20%/day',66,6],['Farhan','Mechanic',2000,3200,3.0,5.0,37.2,'Fine; running generator',58,5],['Lakshmi','Farmer',1700,3000,2.6,4.5,37.2,'Fine; collecting water',45,6]],
+log:['Day 5 Grid down → generator 1.2 L/h → noise radius 150 m','Generator ran 6 h → 40 infected drift in from Zone C → night watch doubled','Day 9 Mains pressure lost → water now from school tank (1,800 L left)'],
+dec:'Arjun\'s wound is reddening. Use the only antibiotic strip now, or keep it for something worse?',
+st:'Water 1,800 L (tank, needs boiling) · Food 24,000 kcal · Antibiotics 1 strip · Fuel 26 L'},
+{n:'Scarcity',to:100,threat:'Hunger, disease',pop:'Group: 11 survivors',
+ros:[['Meera','Nurse',1400,2200,3.5,4.0,37.0,'Fine; overworked',74,4],['Arjun','Electrician',1500,3000,3.0,4.5,37.0,'Healed scar',41,6],['Farhan','Mechanic',1100,2600,4.5,6.0,38.6,'Dysentery · losing about 2 L/day · needs ORS',69,5],['Lakshmi','Farmer',1600,3200,3.0,4.5,37.1,'Vitamin C low · bleeding gums starting',38,7]],
+log:['Monsoon week 3: 140 mm rain → roof catchment +9,800 L','Latrine 12 m from tank → contamination → 3 cases of dysentery','Market Gang raided the godown → rice price in barter doubled'],
+dec:'The Market Gang offers 4 antibiotic strips for 20 kg rice. You have 9 days of food for 11 people.',
+st:'Water 11,000 L (rain, boiled) · Food 160,000 kcal · Antibiotics 0 · Fuel 8 L'},
+{n:'Adaptation',to:365,threat:'Other people',pop:'Settlement: 34 people',
+ros:[['Meera','Nurse',2000,2200,3.2,3.5,37.0,'Fine; trains 2 helpers',44,6.5],['Arjun','Electrician',2200,3000,4.2,5.5,37.6,'Fine; repairing solar panel',35,7],['Farhan','Mechanic',2300,3200,3.5,5.0,37.2,'Fine; trauma from a horde · freezes in fights',61,5],['Lakshmi','Farmer',2100,3400,4.0,6.0,38.9,'Heat exhaustion in fields at 41 °C · resting',33,7]],
+log:['Hunters seen near the canal → quiet infected ambush water collectors','Ragi and vegetable plots harvest 220 kg → 3 weeks of food','Police remnant demands tribute → settlement votes on paying'],
+dec:'The armed group wants 10% of every harvest for protection. Pay, refuse, or ally with the camp remnant?',
+st:'Water 40,000 L (cistern + well) · Food 1.4 M kcal · Antibiotics 6 strips · Fuel 30 L · Solar 400 W'},
+{n:'Rebuilding',to:1001,threat:'Politics, mutation',pop:'Network: 4 settlements, 120 people',
+ros:[['Meera','Doctor (self-taught)',2200,2200,3.5,3.5,37.0,'Runs the clinic',38,7],['Arjun','Council member',2400,2600,3.0,3.5,37.1,'Old fracture · walks with a limp',46,6.5],['Farhan','Trade caravan lead',2600,3200,4.0,5.0,37.2,'Fine',40,6],['Lakshmi','Farm overseer',2300,2800,3.5,4.5,37.0,'Fine',30,7.5]],
+log:['Airborne strain reported in a shelter 30 km away → council debates closing the trade route','Two children born this year → school room built','Cyclone damaged west wall → 6 days of repair'],
+dec:'Council vote: quarantine traders from the east for 10 days, or keep the route open and risk the new strain?',
+st:'Water stable · Food surplus 3 months · Clinic stocked · Barter: salt, seeds, antibiotics'}];
+const cv=$('cv'),c=cv.getContext('2d');
+const cs=getComputedStyle(document.documentElement);
+const BG=cs.getPropertyValue('--surface-2').trim(),INK=cs.getPropertyValue('--text-primary').trim();
+const K={road:'#888780',bld:'#B4B2A9',base:'#1D9E75',inf:'#E24B4A',fac:'#7F77DD',water:'#378ADD',farm:'#639922',mut:'#EF9F27',light:'#FAC775'};
+function rng(s){return()=>{s=(s*16807)%2147483647;return s/2147483647}}
+function dot(x,y,r,col,a){c.globalAlpha=a??1;c.fillStyle=col;c.beginPath();c.arc(x,y,r,0,7);c.fill();c.globalAlpha=1}
+function lbl(t,x,y){c.font='11px sans-serif';c.fillStyle=INK;c.fillText(t,x,y)}
+function infCount(d){const p=d<=5?6000+1200*d:d<=15?12000:Math.max(450,12000*Math.pow(.98,d-15));return Math.round(p)}
+function mutCount(d){return d<30?0:Math.round(Math.min(900,(d-30)*2.5))}
+function phase(d){return PH.findIndex(p=>d<p.to)}
+function drawTown(d,m,L,night){const r=rng(7);
+c.fillStyle=K.water;c.globalAlpha=.55;c.beginPath();c.moveTo(0,330);c.bezierCurveTo(180,300,330,370,560,320);c.lineTo(560,345);c.bezierCurveTo(330,395,180,325,0,355);c.fill();c.globalAlpha=1;
+if(SEA(m)==='Monsoon'){c.fillStyle=K.water;c.globalAlpha=.18;c.fillRect(0,285,560,95);c.globalAlpha=1}
+c.fillStyle=K.road;c.fillRect(0,150,560,7);c.fillRect(270,0,7,300);for(let i=0;i<3;i++){c.fillRect(0,60+i*100,560,3);c.fillRect(90+i*170,0,3,300)}
+c.fillStyle=K.bld;for(let i=0;i<130;i++){const x=r()*540,y=r()*280;if(Math.abs(y-150)<12||Math.abs(x-270)<12)continue;c.fillRect(x,y,8+r()*12,7+r()*10)}
+const LM={Hospital:[420,40],Market:[300,175],School:[150,180],Police:[200,60],Pharmacy:[330,110],'Water tower':[470,220],Godown:[60,250]};
+Object.entries(LM).forEach(([k,v])=>{c.fillStyle=k==='School'?K.base:'#5F5E5A';c.globalAlpha=k==='School'?.3:.6;c.fillRect(v[0]-14,v[1]-10,28,20);c.globalAlpha=1;lbl(k,v[0]-14,v[1]-14)});
+const B=[150,180],bs=d<30?1:d<100?1.6:2.2;c.strokeStyle=K.base;c.lineWidth=3;c.strokeRect(B[0]-20*bs,B[1]-15*bs,40*bs,30*bs);
+if(d>=30){c.fillStyle=K.farm;c.fillRect(B[0]-40,B[1]+32,30,14);c.fillRect(B[0]-5,B[1]+32,30,14)}
+const n=Math.min(110,Math.round(infCount(d)/110)),ri=rng(13),cl=d<15?[LM.Hospital,LM.Market]:[LM.Market,[480,300],LM.Pharmacy];
+for(let i=0;i<n;i++){const h=cl[i%cl.length],s=d<15?40:80;dot(h[0]+(ri()-.5)*s*2,h[1]+(ri()-.5)*s*1.4,2.4,K.inf)}
+const mc=Math.min(20,Math.round(mutCount(d)/40));for(let i=0;i<mc;i++)dot(380+ri()*160,260+ri()*60,3.5,K.mut);
+if(d>=30){c.fillStyle=K.fac;c.globalAlpha=.15;c.fillRect(250,160,110,80);c.globalAlpha=1;c.strokeStyle=K.fac;c.lineWidth=2;c.strokeRect(250,160,110,80);lbl('Market Gang',256,236)}
+overlays(B,d,m,L,night,300)}
+function drawRegion(d,m,L,night){const r=rng(21);
+c.strokeStyle=K.water;c.lineWidth=7;c.globalAlpha=.55;c.beginPath();c.moveTo(0,270);c.bezierCurveTo(160,210,320,340,560,250);c.stroke();c.globalAlpha=1;
+if(SEA(m)==='Monsoon'){c.fillStyle=K.water;c.globalAlpha=.15;c.beginPath();c.ellipse(280,275,280,45,0,0,7);c.fill();c.globalAlpha=1}
+const TW=[[90,90,'Home town'],[360,70,'Town B'],[210,200,'Riverside'],[460,300,'Old camp']];
+c.strokeStyle=K.road;c.lineWidth=3;c.beginPath();c.moveTo(90,90);c.lineTo(210,200);c.lineTo(360,70);c.moveTo(210,200);c.lineTo(460,300);c.stroke();
+TW.forEach(t=>{c.fillStyle=K.bld;for(let i=0;i<30;i++)c.fillRect(t[0]-40+r()*80,t[1]-28+r()*56,5+r()*6,5+r()*5)});
+const mine=d>=365?[0,1,2,3]:[0,2],other=d>=365?[]:[1,3];
+mine.forEach(k=>{const t=TW[k];c.strokeStyle=K.base;c.lineWidth=3;c.strokeRect(t[0]-46,t[1]-34,92,68);lbl(t[2],t[0]-46,t[1]-40)});
+other.forEach(k=>{const t=TW[k];c.fillStyle=K.fac;c.globalAlpha=.15;c.fillRect(t[0]-46,t[1]-34,92,68);c.globalAlpha=1;c.strokeStyle=K.fac;c.lineWidth=2;c.strokeRect(t[0]-46,t[1]-34,92,68);lbl(t[2]+(k===1?' · Police remnant':' · Camp'),t[0]-46,t[1]-40)});
+if(d>=365){c.setLineDash([6,4]);c.strokeStyle=K.base;c.lineWidth=2;c.beginPath();c.moveTo(136,90);c.lineTo(314,70);c.stroke();c.setLineDash([]);lbl('Trade route',200,72)}
+c.fillStyle=K.farm;for(let i=0;i<(d>=365?14:6);i++)c.fillRect(30+((i*113)%480),130+((i*37)%50),20,10);
+const n=Math.min(60,Math.round(infCount(d)/12)),ri=rng(4);for(let i=0;i<n;i++)dot(ri()*560,ri()*380,2,K.inf);
+const mc=Math.min(26,Math.round(mutCount(d)/30));for(let i=0;i<mc;i++)dot(300+ri()*250,150+ri()*200,3.5,K.mut);
+overlays([90,90],d,m,L,night,400)}
+function overlays(B,d,m,L,night,sc){
+if(L.n){const gen=d>=4&&d<200,rad=gen?(150/2000)*sc*3:0;c.strokeStyle=K.inf;c.lineWidth=1.25;[1,.66,.33].forEach(f=>{if(rad){c.globalAlpha=.5*f+.15;c.beginPath();c.arc(B[0],B[1],rad*f,0,7);c.stroke()}});c.globalAlpha=1;if(rad)lbl('Generator · 150 m',B[0]+rad*.7,B[1]-rad*.7)}
+if(L.l&&night){c.fillStyle=K.light;c.globalAlpha=.25;c.beginPath();c.arc(B[0],B[1],sc*.33,0,7);c.fill();c.globalAlpha=1;lbl('Light visible ~1 km',B[0]-30,B[1]+sc*.33-6)}
+if(L.s){const wd=SEA(m)==='Monsoon'?0.35:-0.4;c.fillStyle=K.mut;c.globalAlpha=.16;c.save();c.translate(B[0],B[1]);c.rotate(wd);c.beginPath();c.ellipse(90,0,90,26,0,0,7);c.fill();c.restore();c.globalAlpha=1;
+c.strokeStyle=INK;c.lineWidth=1.5;c.beginPath();c.moveTo(500,30);c.lineTo(500+30*Math.cos(wd),30+30*Math.sin(wd));c.stroke();lbl('Wind',480,22)}
+if(L.d){const mon=SEA(m)==='Monsoon';const spots=mon?[[220,300],[380,290],[100,320],[B[0]+30,B[1]+20]]:[[B[0]+30,B[1]+20]];spots.forEach(s=>dot(s[0],s[1],mon?22:12,K.water,.3));lbl(mon?'Standing water: malaria, cholera':'Latrine near tank',mon?200:B[0]+20,mon?285:B[1]+46)}
+if(night){c.fillStyle='rgb(8,12,28)';c.globalAlpha=.42;c.fillRect(0,0,560,380);c.globalAlpha=1;if(L.l)dot(B[0],B[1],sc*.08,K.light,.6)}}
+function bar(v,max,warn){const p=Math.max(0,Math.min(100,v/max*100));return `<div style="height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:2px 0 4px;"><div style="height:100%;width:${p}%;background:${warn?'#E24B4A':'#1D9E75'}"></div></div>`}
+function render(){const d=+$('day').value,dt=new Date(Date.UTC(2026,3,15)+d*864e5),m=dt.getUTCMonth(),yr=Math.floor(d/365)+1,pi=phase(d),P=PH[pi];
+const L={n:$('Ln').checked,l:$('Ll').checked,s:$('Ls').checked,d:$('Ld').checked},night=$('Lnight').checked;
+$('dayout').textContent='Day '+d;$('k1').textContent=`${dt.getUTCDate()} ${M[m]}, Yr ${yr} · ${SEA(m)}`;
+$('k2').textContent=`${night?T[m]-8:T[m]} °C · ${H[m]}% · ${R[m]} mm/mo`;
+const ic=infCount(d),mc=mutCount(d);$('k3').textContent=ic.toLocaleString()+(mc?` (${mc} mutated)`:'');$('k4').textContent=P.threat;
+$('vname').textContent=d<100?'Town view · about 2 km × 2 km':'Region view · about 40 km × 30 km';
+$('util').textContent=`Power ${d<4?'on':d<200?'generator':'solar'} · Water ${d<9?'mains':d<30?'tank':d<100?'rain':'well + cistern'}`;
+c.fillStyle=BG;c.fillRect(0,0,560,380);d<100?drawTown(d,m,L,night):drawRegion(d,m,L,night);
+$('pop').textContent=P.pop;$('phase').textContent='Phase: '+P.n;
+const heat=T[m]>=38;
+$('roster').innerHTML=P.ros.map(s=>{const kw=s[2]<s[3]*0.75,ww=s[4]<s[5]*0.8,tw=s[6]>=38,sw=s[8]>=65;return `<div style="border-top:1px solid var(--border);padding:6px 0;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:500;font-size:12.5px;">${s[0]}</span><span style="color:var(--text-secondary);">${s[1]}</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px;color:var(--text-secondary);">
+<div>${s[2].toLocaleString()}/${s[3].toLocaleString()} kcal${bar(s[2],s[3],kw)}</div><div>${s[4]}/${heat?s[5]+1:s[5]} L water${bar(s[4],heat?s[5]+1:s[5],ww)}</div>
+<div>Stress ${s[8]}${bar(s[8],100,sw)}</div><div>Sleep ${s[9]} h · <span style="color:${tw?'var(--text-danger)':'var(--text-secondary)'}">${s[6]} °C</span></div></div>
+<div style="color:${/bleed|Dysentery|Heat|fever|38/.test(s[7])?'var(--text-danger)':'var(--text-primary)'};">${s[7]}</div></div>`}).join('');
+$('log').innerHTML=P.log.map(l=>`<div>${l}</div>`).join('');$('dec').textContent=P.dec;$('stores').textContent=P.st;
+document.querySelectorAll('#jumps button').forEach(b=>{const on=phase(+b.dataset.d)===pi;b.style.background=on?'var(--bg-accent)':'';b.style.color=on?'var(--text-accent)':'';b.style.borderColor=on?'var(--border-accent)':''})}
+['day','Ln','Ll','Ls','Ld','Lnight'].forEach(id=>$(id).addEventListener('input',render));
+document.querySelectorAll('#jumps button').forEach(b=>b.onclick=()=>{$('day').value=b.dataset.d;render()});
+render();
+</script>
+</body>
+</html>
