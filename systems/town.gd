@@ -1,5 +1,6 @@
 extends "res://core/sim_system.gd"
-## Town and loot. Builds the buildings from data/town.json, each with finite loot
+## Town and loot. Builds the map and buildings from data/town_layout.json (the
+## hand-authored town), each building with finite loot
 ## rolled from its type's loot table. Every morning each building loses its daily
 ## "looted" share to other survivors (not simulated, so abstracted as a rate),
 ## and food in it ages and spoils like anywhere else.
@@ -19,13 +20,14 @@ const TANK_DRAWN_BY_OTHERS_PER_DAY: float = 0.08
 
 
 func setup() -> void:
-	var town: Dictionary = Data.table("town")
+	var layout: Dictionary = Data.table("town_layout")
 	WorldState.town = {
-		"width": int(town["width"]), "height": int(town["height"]), "tile_m": float(town["tile_m"]),
-		"rows": town["rows"], "landmarks": town["landmarks"],
-		"zone_size_tiles": int(town["zones"]["size_tiles"]),
+		"width": int(layout["width"]), "height": int(layout["height"]), "tile_m": float(layout["tile_m"]),
+		"rows": paint_terrain(layout), "landmarks": layout["landmarks"],
+		"zone_size_tiles": int(layout["zones"]["size_tiles"]),
+		"zone_growth_weights": growth_weights(layout),
 	}
-	for row: Dictionary in town["buildings"]:
+	for row: Dictionary in layout["buildings"]:
 		WorldState.buildings.append(_new_building(row))
 
 
@@ -42,6 +44,36 @@ func tick() -> void:
 			building["tank_l"] = float(building["tank_l"]) * (1.0 - TANK_DRAWN_BY_OTHERS_PER_DAY)
 		Stores.age_and_spoil(building["loot"], 1.0, indoor_c)
 		_check_stripped(building)
+
+
+## The terrain grid: open ground, with the layout's rectangles painted over it in order.
+static func paint_terrain(layout: Dictionary) -> Array:
+	var width: int = int(layout["width"])
+	var grid: Array = []
+	for y: int in int(layout["height"]):
+		grid.append(String(layout["open_ground"]).repeat(width))
+	for rect: Dictionary in layout["terrain"]:
+		for y: int in range(int(rect["y0"]), int(rect["y1"]) + 1):
+			var row: String = grid[y]
+			for x: int in range(int(rect["x0"]), int(rect["x1"]) + 1):
+				row[x] = String(rect["char"])
+			grid[y] = row
+	return grid
+
+
+## Where new infected come from in the first days: where people lived.
+@warning_ignore("integer_division")
+static func growth_weights(layout: Dictionary) -> Array:
+	var zones: Dictionary = layout["zones"]
+	var size: int = int(zones["size_tiles"])
+	var cols: int = int(zones["cols"])
+	var weights: Array = []
+	weights.resize(cols * int(zones["rows"]))
+	weights.fill(float(zones["growth_weight_base"]))
+	for b: Dictionary in layout["buildings"]:
+		var zone: int = (int(b["y"]) / size) * cols + int(b["x"]) / size
+		weights[zone] = float(weights[zone]) + float(zones["growth_weight_per_house"] if b["type"] == "house" else zones["growth_weight_per_other_building"])
+	return weights
 
 
 func _new_building(row: Dictionary) -> Dictionary:

@@ -4,3 +4,6 @@
 
 # Original handoff archives
 *.zip
+
+# Exported builds
+build/

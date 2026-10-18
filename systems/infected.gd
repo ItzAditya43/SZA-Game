@@ -82,9 +82,9 @@ func setup() -> void:
 	listen(&"noise", _on_noise)
 	listen(&"light", _on_light)
 	listen(&"survivor_turned", _on_survivor_turned)
-	var zones: Dictionary = Data.table("town")["zones"]
+	var zones: Dictionary = Data.table("town_layout")["zones"]
 	var start: Array = zones["start_infected"]
-	var weights: Array = zones["growth_weights"]
+	var weights: Array = WorldState.town["zone_growth_weights"]
 	var rows: Array = WorldState.town["rows"]
 	var size: int = int(zones["size_tiles"])
 	for i: int in start.size():
