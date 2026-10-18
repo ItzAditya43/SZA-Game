@@ -64,6 +64,7 @@ func _batch(games: int) -> int:
 	return 0
 
 
+@warning_ignore("integer_division")
 func _batch_one(games: int, first_seed: int, difficulty: String, strategy: StringName) -> void:
 	var won: int = 0
 	var alive: int = 0

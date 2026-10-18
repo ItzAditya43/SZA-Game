@@ -52,3 +52,13 @@ Run every test with `bash tools/run_tests.sh`. Scripts started with `--script` m
 ## When the spec is unclear
 
 Follow the seven Realism rules in `GAME_DESIGN.md`. If it is still unclear, pick the simplest option that keeps the architecture rules intact, note it in your report, and move on. Ask only if the choice would be expensive to undo.
+
+## Rules added after Prototype 1
+
+9. **Truth vs knowledge.** `WorldState` is the truth. From prompt 4 onward, the player sees `PlayerKnowledge` (what the group has observed and when). UI code reads knowledge, never truth, except where a difficulty setting says the player sees exact values. The automated player must also use knowledge, never truth, so balance numbers stay fair.
+10. **Rendering is a reader.** Everything in `res://render/` and `res://ui/` only reads `WorldState`/`PlayerKnowledge` and listens to `EventBus`. Headless runs must never load `render/`, `ui/` or `assets/`.
+11. **Asset licensing.** Use only CC0 assets, or CC-BY with attribution. Record every asset in `CREDITS.md` (file path, author, source URL, licence). If the licence is unclear, don't use the asset. Fall back to clean procedural shapes instead.
+12. **Balance report after any balance-affecting change.** Run the automated player for 40 games per difficulty per strategy and report win rate, % survivors alive, median day of first death, and deaths by cause. Compare against the previous report.
+13. **Visual self-check.** For UI or render work, capture screenshots at 1280×720 and 1920×1080 with `tools/screenshot.gd` and inspect them before reporting. Mention anything clipped, overlapping or unreadable.
+14. **Saves are versioned.** Any change to the shape of `WorldState` bumps `SAVE_VERSION` and adds a migration or a clear "incompatible save" message.
+15. **One branch per prompt.** Branch from the latest reviewed branch. Never merge into `main` yourself.
