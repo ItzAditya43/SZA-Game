@@ -15,6 +15,7 @@ var _days_started: int = 0
 var _clock_errors: int = 0
 var _verbose: bool = false
 var _player: AutoPlayer
+var _first_loss_tick: int = -1
 
 
 ## Returns the process exit code.
@@ -70,9 +71,9 @@ func _batch_one(games: int, first_seed: int, difficulty: String, strategy: Strin
 	var alive: int = 0
 	var people: int = 0
 	var score: float = 0.0
-	var end_day: float = 0.0
 	var causes: Dictionary = {}
 	var breaches: int = 0
+	var first_losses: Array[float] = []
 	for game: int in games:
 		SimRun.start(first_seed + game, difficulty)
 		_player = AutoPlayer.new(strategy)
@@ -86,23 +87,36 @@ func _batch_one(games: int, first_seed: int, difficulty: String, strategy: Strin
 		alive += int(outcome["alive"])
 		people += int(outcome["started"])
 		score += float(outcome["score"])
-		end_day += float(outcome["day"])
 		breaches += int(WorldState.stats.get("breaches", 0))
 		for s: Dictionary in WorldState.survivors:
 			if s["status"] != &"ok":
 				causes[s["cause"]] = int(causes.get(s["cause"], 0)) + 1
+		first_losses.append(_first_loss_day())
 	var cause_list: Array = causes.keys()
 	cause_list.sort_custom(func(a: String, b: String) -> bool: return int(causes[a]) > int(causes[b]))
 	var top: PackedStringArray = []
 	for cause: String in cause_list.slice(0, 6):
 		top.append("%s %d" % [cause, causes[cause]])
-	print("%-12s %d games: won %d%% · survivors alive %d%% (%d of %d) · avg score %d · avg end day %.1f · breaches/game %.1f" % [
+	first_losses.sort()
+	var median: float = first_losses[first_losses.size() / 2]
+	print("%-12s %d games: won %d%% · survivors alive %d%% (%d of %d) · median first loss day %s · avg score %d · breaches/game %.1f" % [
 		strategy, games, roundi(100.0 * won / games), roundi(100.0 * alive / maxi(people, 1)), alive, people,
-		roundi(score / games), end_day / games, float(breaches) / games])
+		"none" if median > 99.0 else "%.1f" % median, roundi(score / games), float(breaches) / games])
 	print("             losses: %s" % ", ".join(top))
 
 
+## Day of the run's first death or departure, or 100 if nobody was lost.
+func _first_loss_day() -> float:
+	var day: float = 100.0 if _first_loss_tick < 0 else float(_first_loss_tick) / WorldState.TICKS_PER_DAY
+	_first_loss_tick = -1
+	return day
+
+
 func _on_bus_event(event_name: StringName, payload: Dictionary) -> void:
+	if event_name in [&"survivor_died", &"survivor_turned", &"survivor_left", &"survivor_exiled"] and _first_loss_tick < 0:
+		_first_loss_tick = WorldState.tick
+	elif event_name == &"run_started":
+		_first_loss_tick = -1
 	if _verbose and payload.has("text"):
 		print("%s  %s" % [WorldState.clock_string(), payload["text"]])
 	if event_name == &"day_started":
