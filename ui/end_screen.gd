@@ -71,7 +71,14 @@ static func describe(outcome: Dictionary) -> String:
 	return "\n".join(lines)
 
 
+## Anchored to the middle of the screen and growing both ways, so the panel stays
+## centred however tall its contents turn out once laid out.
 func _center() -> void:
+	set_anchors_preset(Control.PRESET_CENTER)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
+	offset_left = 0.0
+	offset_right = 0.0
+	offset_top = 0.0
+	offset_bottom = 0.0
 	reset_size()
-	var parent_size: Vector2 = get_parent_area_size()
-	position = ((parent_size - size) / 2.0).floor()
