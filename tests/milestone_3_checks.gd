@@ -71,11 +71,12 @@ func _check_click_shows_building() -> void:
 	var map: MapGrid = MapGrid.new()
 	map.ui_state = ui_state
 	tree.root.add_child(map)
+	map.size = Vector2(640, 640)
 	var pharmacy: Dictionary = WorldState.building("pharmacy_01")
 	var click: InputEventMouseButton = InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
-	click.position = Vector2(float(pharmacy["x"]) + 0.5, float(pharmacy["y"]) + 0.5) * MapGrid.TILE_PX
+	click.position = Vector2(float(pharmacy["x"]) + 0.5, float(pharmacy["y"]) + 0.5) * map.tile_px() + map.map_origin()
 	map._gui_input(click)
 	expect("clicking a building on the map selects it", ui_state.selected_building == "pharmacy_01", ui_state.selected_building)
 	var shown: String = BuildingPanel.describe(WorldState.building(ui_state.selected_building))

@@ -1,60 +1,73 @@
 extends PanelContainer
-## Top bar: clock, date, temperature, phase, speed buttons and utilities status.
-## Reads WorldState and TickLoop and listens to EventBus. Its only effects on the
-## simulation are TickLoop speed calls and the test-event button.
-## Keys: Space toggles pause, 1/2/3 set 1×/3×/10×, T fires a test event.
+## Top bar: clock and phase, date and temperature, speed, the state of power, taps
+## and phones, the alert counter and the menu. Reads WorldState and TickLoop; its
+## only effects on the simulation are speed changes and the test event.
+## Keys: Space pause/resume, 1/2/3 speed, T test event, ? shortcuts.
 
-const ACTIVE_SPEED_COLOR: Color = Color(1.0, 0.82, 0.3)
+signal alerts_pressed
+signal menu_pressed
+signal shortcuts_pressed
+signal panel_toggled
 
-var _clock_label: Label
-var _weather_label: Label
-var _utilities_label: Label
+const Kit := preload("res://ui/kit.gd")
+const Tokens := preload("res://ui/theme/tokens.gd")
+
+var _clock: Label
+var _weather: Label
 var _speed_buttons: Dictionary = {}  # TickLoop.Speed -> Button
+var _utilities: HBoxContainer
+var _alerts: Button
+var _alert_count: int = -1
+var _alert_tier: String = ""
 
 
 func _ready() -> void:
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	theme_type_variation = "TopBar"
+	var row: HBoxContainer = Kit.hbox(Tokens.SPACE_M)
 	add_child(row)
-
-	_clock_label = Label.new()
-	_clock_label.add_theme_font_size_override("font_size", 26)
-	_clock_label.custom_minimum_size = Vector2(230, 0)
-	row.add_child(_clock_label)
-
-	_weather_label = Label.new()
-	_weather_label.custom_minimum_size = Vector2(320, 0)
-	row.add_child(_weather_label)
-
-	for speed: TickLoop.Speed in [TickLoop.Speed.PAUSED, TickLoop.Speed.X1, TickLoop.Speed.X3, TickLoop.Speed.X10]:
-		var button: Button = _make_button(TickLoop.SPEED_LABELS[speed])
+	_clock = Kit.label("", "ClockLabel")
+	_clock.custom_minimum_size = Vector2(200, 0)
+	row.add_child(_clock)
+	_weather = Kit.label("", "MutedLabel")
+	_weather.custom_minimum_size = Vector2(250, 0)
+	_weather.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_weather)
+	var speeds: HBoxContainer = Kit.hbox(2)
+	row.add_child(speeds)
+	var names: Dictionary = {TickLoop.Speed.PAUSED: "Pause", TickLoop.Speed.X1: "1×", TickLoop.Speed.X3: "3×", TickLoop.Speed.X10: "10×"}
+	var keys: Dictionary = {TickLoop.Speed.PAUSED: "Space", TickLoop.Speed.X1: "1", TickLoop.Speed.X3: "2", TickLoop.Speed.X10: "3"}
+	for speed: TickLoop.Speed in names:
+		var button: Button = Kit.button(names[speed], _on_speed_pressed.bind(speed), "SpeedButton", "Key: %s" % keys[speed])
 		button.toggle_mode = true
-		button.add_theme_color_override("font_pressed_color", ACTIVE_SPEED_COLOR)
-		button.add_theme_color_override("font_hover_pressed_color", ACTIVE_SPEED_COLOR)
-		button.pressed.connect(_on_speed_pressed.bind(speed))
-		row.add_child(button)
+		button.custom_minimum_size = Vector2(52, 32)
+		speeds.add_child(button)
 		_speed_buttons[speed] = button
-
-	var test_button: Button = _make_button("Test event")
-	test_button.tooltip_text = "Fires a test event on the bus (T)"
-	test_button.pressed.connect(_fire_test_event)
-	row.add_child(test_button)
-
-	_utilities_label = Label.new()
-	_utilities_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_utilities_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(_utilities_label)
-
+	row.add_child(Kit.spacer())
+	_utilities = Kit.hbox(Tokens.SPACE_XS)
+	row.add_child(_utilities)
+	_alerts = Kit.button("Alerts", func() -> void: alerts_pressed.emit(), "Button", "Warnings: what needs attention now")
+	row.add_child(_alerts)
+	row.add_child(Kit.button("?", func() -> void: shortcuts_pressed.emit(), "GhostButton", "Keyboard shortcuts (?)"))
+	row.add_child(Kit.button("Panel", func() -> void: panel_toggled.emit(), "GhostButton", "Show or hide the side panel (Tab)"))
+	row.add_child(Kit.button("Menu", func() -> void: menu_pressed.emit(), "GhostButton", "Save, load, settings, new run (Esc)"))
 	EventBus.event.connect(_on_bus_event)
-	_refresh()
+	refresh()
 	_refresh_speed()
+
+
+func set_alerts(count: int, worst_tier: String) -> void:
+	if count == _alert_count and worst_tier == _alert_tier:
+		return
+	_alert_count = count
+	_alert_tier = worst_tier
+	_alerts.text = "Alerts: none" if count == 0 else "Alerts: %d" % count
+	_alerts.theme_type_variation = "DangerButton" if worst_tier == "urgent" else ("Button" if count > 0 else "GhostButton")
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key: InputEventKey = event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
-	# No time controls while the start or end screen is up.
 	if get_tree().get_nodes_in_group(&"modal").any(func(n: Node) -> bool: return (n as Control).visible):
 		return
 	match key.keycode:
@@ -67,55 +80,53 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_3:
 			TickLoop.set_speed(TickLoop.Speed.X10)
 		KEY_T:
-			_fire_test_event()
+			EventBus.emit_event(&"test_event", {"source": "ui"})
+		KEY_TAB:
+			panel_toggled.emit()
+		KEY_SLASH, KEY_QUESTION:
+			shortcuts_pressed.emit()
 		_:
 			return
 	get_viewport().set_input_as_handled()
 
 
-func _make_button(text: String) -> Button:
-	var button: Button = Button.new()
-	button.text = text
-	button.custom_minimum_size = Vector2(56, 32)
-	# Keeps Space for pause instead of re-pressing the last clicked button.
-	button.focus_mode = Control.FOCUS_NONE
-	return button
-
-
 func _on_speed_pressed(speed: TickLoop.Speed) -> void:
 	TickLoop.set_speed(speed)
-	# Clicking the active toggle button unpresses it, so always resync.
 	_refresh_speed()
-
-
-func _fire_test_event() -> void:
-	EventBus.emit_event(&"test_event", {"source": "ui"})
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
 	if event_name == &"speed_changed":
 		_refresh_speed()
-	else:
-		_refresh()
+	elif event_name in [&"tick", &"run_started", &"game_loaded", &"power_failed", &"mains_failed", &"phones_down"]:
+		refresh()
 
 
-func _refresh() -> void:
-	_clock_label.text = WorldState.clock_string()
+func refresh() -> void:
+	_clock.text = WorldState.clock_string()
 	var climate: Dictionary = WorldState.climate
-	var phase: String = "Day" if WorldState.phase() == WorldState.PHASE_DAY else "Night"
-	_weather_label.text = "%s · %.1f °C · %s · %s" % [climate.get("date", ""), float(climate.get("temperature_c", 0.0)), phase,
-		WorldState.difficulty.get("name", "")]
+	var night: bool = WorldState.phase() == WorldState.PHASE_NIGHT
+	_weather.text = "%s · %.0f °C · %s · %s" % [climate.get("date", ""), float(climate.get("temperature_c", 0.0)),
+		"Night" if night else "Day", WorldState.difficulty.get("name", "")]
 	var infra: Dictionary = WorldState.infrastructure
+	var key: String = "%s%s%s%s" % [infra.get("power_on", false), infra.get("mains_on", false), infra.get("phones_on", false),
+		infra.get("generator_running", false)]
+	if _utilities.get_meta("key", "") == key:
+		return
+	_utilities.set_meta("key", key)
+	Kit.clear(_utilities)
 	if infra.is_empty():
-		_utilities_label.text = ""
-	else:
-		_utilities_label.text = "Power %s · Water mains %s · Phones %s" % [
-			"on" if infra.get("power_on", false) else "OFF",
-			"on" if infra.get("mains_on", false) else "OFF",
-			"on" if infra.get("phones_on", false) else "OFF"]
+		return
+	_utilities.add_child(_utility("Power", infra.get("power_on", false), "Grid power. When it fails, a generator gives light at the cost of fuel and noise."
+		if not infra.get("generator_running", false) else "Generator running."))
+	_utilities.add_child(_utility("Taps", infra.get("mains_on", false), "Water mains. When they fail, water comes only from tanks, rain or the canal, and must be boiled."))
+	_utilities.add_child(_utility("Phones", infra.get("phones_on", false), "Mobile networks."))
+
+
+func _utility(name: String, on: bool, tooltip: String) -> Label:
+	return Kit.chip("%s %s" % [name, "on" if on else "off"], "ok" if on else "muted", tooltip)
 
 
 func _refresh_speed() -> void:
 	for speed: TickLoop.Speed in _speed_buttons:
-		var button: Button = _speed_buttons[speed]
-		button.set_pressed_no_signal(speed == TickLoop.speed)
+		(_speed_buttons[speed] as Button).set_pressed_no_signal(speed == TickLoop.speed)

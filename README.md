@@ -23,16 +23,16 @@ On a fresh clone, run `godot --headless --import` once first.
 
 ## How to play
 
-You are the group's leader. You don't walk anyone around; you give orders and decide.
+You are the group's leader. You don't walk anyone around; you give orders and decide. Press **?** in game for every key.
 
-- **Top bar:** clock, date, temperature, day/night, speed (Space pauses, 1/2/3 for 1×/3×/10×), and whether power, taps and phones still work. At 1× a day takes 72 seconds.
-- **Saving:** the game autosaves every dawn. Ctrl+S quick-saves, Ctrl+L opens the load list, Esc opens the pause menu.
-- **Map (left):** the 2 km town. Buildings are coloured by type; the green outline is your base; blue dots are survivors out on trips; the red tint and numbers are infected per zone. Click a building to inspect it.
-- **Group tab:** each survivor's body in real units (water deficit in litres, energy debt in kcal, blood volume, core temperature, fatigue, sleep debt, stress), their wounds, and their day and night jobs. Jobs: rest, scavenge, guard, fortify, collect water, cook, treat.
-- **Building tab:** what is inside the selected building, how dangerous it is, how long a trip takes, and buttons to send someone to scavenge it or to move your base there.
-- **Base tab:** defense and what it is made of, stores, and standing orders: food and water rations, boiling, generator, firearms.
-- **Decisions tab:** bites, antibiotics and strangers at the gate. The clock stops until you answer.
-- **Log (bottom):** what happened and why.
+- **Top bar:** day and clock, date, temperature and phase, speed (Space pauses, 1/2/3 for 1×/3×/10×; at 1× a day takes 72 seconds), whether power, taps and phones still work, and **Alerts** (red when something is urgent; click it for the list and to choose what pauses the game).
+- **Map (centre):** the 2 km town. Click a building for its card: what's inside, danger, last visit, and buttons to plan a trip or move the base there. The bar above the map switches one layer at a time (infected, noise, light at night, smell and wind, attention, disease risk), each with a legend.
+- **Side panel (Tab hides it):** People (who does which job by day and night; drag a name to another job; each card shows water, food, sleep and stress, click it for the causes), Stores (how many days water, food, gas and medicine last), Base (defense, attention, standing orders), Log (filterable; click a line to find it on the map) and Stats (charts by day).
+- **Hover any number** to see what makes it up and where it's heading.
+- **Planning a trip:** pick who goes, when (now, midday, dusk, night) and what to bring back first. The planner shows the return time, how much they can carry and the chance of getting hurt, from the same rules the simulation uses.
+- **Decisions** (bites, antibiotics, strangers) open in a window that spells out what each choice does and what nobody can know yet. Irreversible choices are marked red and never pre-selected.
+- **Ticker (bottom):** the last three things that happened; click one to see where.
+- **Saving:** autosave every dawn; Ctrl+S quick-saves, Ctrl+L loads, Esc opens the menu (save, load, settings, new run). Settings has interface size (80–150%) and which alerts pause the game.
 
 Win by reaching day 30 with anyone still in the group. You lose if everyone is dead, turned or gone, or if every survivor's morale breaks.
 
@@ -42,7 +42,7 @@ Win by reaching day 30 with anyone still in the group. You lose if everyone is d
 data/      items, buildings, loot tables, survivors, traits, events, town layout, attention, mobility, difficulty, scenario (all JSON)
 core/      autoloads (Rng, EventBus, WorldState, Data, TickLoop) and shared helpers
 systems/   time, infrastructure, town, base, jobs, infected, survivors, resources, events, outcome
-ui/        HUD, map, panels, log, end screen
+ui/        HUD, map, panels, planner, modals, log, charts, end screen; ui/theme/ holds the one theme
 tools/     headless runner, auto-player, screenshot tool, town generator, test runner
 tests/     one headless test suite per milestone
 ```

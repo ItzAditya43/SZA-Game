@@ -24,13 +24,7 @@ var _random_roster: bool = false
 func _ready() -> void:
 	if _description != null:
 		return
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.1, 1.0)
-	style.border_color = Color(1, 1, 1, 0.25)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(20)
-	add_theme_stylebox_override("panel", style)
+	theme_type_variation = "Modal"
 	var column: VBoxContainer = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	column.custom_minimum_size = Vector2(760, 0)
@@ -38,13 +32,13 @@ func _ready() -> void:
 
 	var title: Label = Label.new()
 	title.text = "Survival Sim — new run"
-	title.add_theme_font_size_override("font_size", 26)
+	title.theme_type_variation = "TitleLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 	var intro: Label = Label.new()
 	intro.text = "A district town in South India, mid-April. Five survivors. Thirty days."
 	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intro.modulate = Color(1, 1, 1, 0.7)
+	intro.theme_type_variation = "MutedLabel"
 	column.add_child(intro)
 
 	var saves_row: HBoxContainer = HBoxContainer.new()
@@ -64,7 +58,7 @@ func _ready() -> void:
 		var button: Button = _button(String(preset["name"]), _pick.bind(String(preset["id"])))
 		button.toggle_mode = true
 		button.custom_minimum_size = Vector2(140, 36)
-		button.add_theme_color_override("font_pressed_color", Color(1.0, 0.82, 0.3))
+		button.theme_type_variation = "SpeedButton"
 		row.add_child(button)
 		_buttons[preset["id"]] = button
 	_description = Label.new()
@@ -114,7 +108,7 @@ func _ready() -> void:
 
 	_start = _button("Start", _on_start)
 	_start.custom_minimum_size = Vector2(0, 42)
-	_start.add_theme_font_size_override("font_size", 20)
+	_start.theme_type_variation = "PrimaryButton"
 	column.add_child(_start)
 	_pick(_choice)
 	_set_default()

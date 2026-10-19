@@ -4,7 +4,7 @@ extends "res://tests/checks_base.gd"
 const AutoPlayer := preload("res://tools/auto_player.gd")
 const EndScreen := preload("res://ui/end_screen.gd")
 const Geo := preload("res://core/geo.gd")
-const DecisionPanel := preload("res://ui/decision_panel.gd")
+const DecisionModal := preload("res://ui/decision_modal.gd")
 const Decisions := preload("res://core/decisions.gd")
 
 ## Enough games for the survival rate to mean something, few enough to run in a few minutes.
@@ -81,21 +81,24 @@ func _check_stranger() -> void:
 
 func _check_decision_panel() -> void:
 	start(3250)
-	var panel: DecisionPanel = DecisionPanel.new()
+	var panel: DecisionModal = DecisionModal.new()
 	tree.root.add_child(panel)
 	# Checks run before the first frame, when Godot has not yet readied new nodes.
 	if not panel.is_node_ready():
 		panel._ready()
 	Decisions.create(&"test", "Test question?", [Decisions.option(&"yes", "Yes"), Decisions.option(&"no", "No")])
-	var buttons: Array = panel.find_children("*", "Button", true, false)
-	expect("a waiting decision shows in the Decisions tab with one button per option", buttons.size() == 2,
+	var buttons: Array = panel.find_children("*", "Button", true, false).filter(
+		func(b: Button) -> bool: return b.text in ["Yes", "No"])
+	expect("a waiting decision opens a window with one button per option", panel.visible and buttons.size() == 2,
 		"%d buttons" % buttons.size())
+	expect("no option has keyboard focus, so a stray key can't choose one", buttons.all(func(b: Button) -> bool: return not b.has_focus()))
 	captured.clear()
 	if buttons.size() == 2:
 		(buttons[1] as Button).pressed.emit()
 	var made: Array[Dictionary] = events_named(&"decision_made")
 	expect("pressing a button sends the choice on the bus", made.size() == 1 and made[0]["payload"]["option"] == &"no")
-	panel.queue_free()
+	# Freed now, before the tree would ready it a second time.
+	panel.free()
 
 
 func _check_full_run() -> void:

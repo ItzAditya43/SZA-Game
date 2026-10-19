@@ -1,126 +1,103 @@
 extends ScrollContainer
-## The base: its defense and what it is made of, utilities, the group's stores in
-## real units, and the standing orders (rations, boiling, generator, guns).
-## Changing an order sends `command_set_policy` on the bus.
+## The Base tab: where the group lives, how strong it is and why, how much
+## attention it's drawing and why, and the standing orders. Each order says what
+## it costs before you pick it.
 
+const Kit := preload("res://ui/kit.gd")
+const Tokens := preload("res://ui/theme/tokens.gd")
+const Insight := preload("res://core/insight.gd")
 const Stores := preload("res://core/stores.gd")
 
-const POLICY_CHOICES: Array[Dictionary] = [
+const ORDERS: Array[Dictionary] = [
 	{"key": &"food_ration", "label": "Food ration", "values": [&"full", &"reduced", &"half", &"minimal"],
-		"names": ["Full (up to 3,000 kcal)", "Reduced (2,000)", "Half (1,500)", "Minimal (800)"]},
+		"names": ["Full (up to 3,000 kcal)", "Reduced (2,000)", "Half (1,500)", "Minimal (800)"],
+		"help": "Less food stretches stores, but hungry people work slower and get stressed."},
 	{"key": &"water_ration", "label": "Water ration", "values": [&"as_needed", &"4L", &"3L", &"2L", &"1L"],
-		"names": ["As needed", "4 L a day", "3 L a day", "2 L a day", "1 L a day"]},
-	{"key": &"boil_water", "label": "Boil water", "values": [true, false], "names": ["Boil before drinking", "Drink it as it is"]},
-	{"key": &"generator", "label": "Generator", "values": [&"off", &"evening", &"night"],
-		"names": ["Off", "Evenings 18-22", "All night"]},
-	{"key": &"use_guns", "label": "Firearms", "values": [false, true], "names": ["Hold fire (quiet)", "Use guns (600 m gunshot)"]},
+		"names": ["As needed", "4 L a day", "3 L a day", "2 L a day", "1 L a day"],
+		"help": "People need 3-6 L a day in this heat. Below that they dehydrate within days."},
+	{"key": &"boil_water", "label": "Boil water", "values": [true, false], "names": ["Boil before drinking", "Drink it as it is"],
+		"help": "Boiling costs cooking gas or firewood. Untreated tank or canal water gives a 30% daily chance of dysentery or cholera."},
+	{"key": &"generator", "label": "Generator", "values": [&"off", &"evening", &"night"], "names": ["Off", "Evenings 18–22", "All night"],
+		"help": "Light and a working fridge, for 1 L of fuel an hour. Its noise and light draw attention."},
+	{"key": &"use_guns", "label": "Firearms", "values": [false, true], "names": ["Hold fire (quiet)", "Use guns"],
+		"help": "Guns win fights, but a shot carries 600 m and draws infected and attention."},
 ]
-const STORE_GROUPS: Array[String] = ["water", "food", "medicine", "comfort", "fuel", "materials", "gear", "vehicle", "weapon"]
 
-var _text: RichTextLabel
-var _pickers: Dictionary = {}  # policy key -> OptionButton
+var _column: VBoxContainer
+var _info: VBoxContainer
+var _pickers: Dictionary = {}
+var _key: String = ""
 
 
 func _ready() -> void:
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var column: VBoxContainer = VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(column)
-	var grid: GridContainer = GridContainer.new()
-	grid.columns = 2
-	column.add_child(grid)
-	for choice: Dictionary in POLICY_CHOICES:
-		var label: Label = Label.new()
-		label.text = choice["label"]
-		grid.add_child(label)
+	_column = Kit.vbox(Tokens.SPACE_S)
+	_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(_column)
+	_info = Kit.vbox(Tokens.SPACE_S)
+	_column.add_child(_info)
+	_column.add_child(HSeparator.new())
+	_column.add_child(Kit.label("Standing orders", "HeadingLabel"))
+	for order: Dictionary in ORDERS:
+		var row: HBoxContainer = Kit.hbox()
+		var name: Label = Kit.label(order["label"])
+		name.custom_minimum_size = Vector2(110, 0)
+		row.add_child(name)
 		var picker: OptionButton = OptionButton.new()
 		picker.focus_mode = Control.FOCUS_NONE
-		for name: String in choice["names"]:
-			picker.add_item(name)
+		picker.tooltip_text = order["help"]
+		for text: String in order["names"]:
+			picker.add_item(text)
 		picker.item_selected.connect(func(index: int) -> void:
-			EventBus.emit_event(&"command_set_policy", {"key": choice["key"], "value": choice["values"][index]}))
-		grid.add_child(picker)
-		_pickers[choice["key"]] = picker
-	_text = RichTextLabel.new()
-	_text.bbcode_enabled = true
-	_text.fit_content = true
-	_text.scroll_active = false
-	_text.focus_mode = Control.FOCUS_NONE
-	_text.add_theme_font_size_override("normal_font_size", 14)
-	column.add_child(_text)
+			EventBus.emit_event(&"command_set_policy", {"key": order["key"], "value": order["values"][index]}))
+		row.add_child(picker)
+		_column.add_child(row)
+		_column.add_child(Kit.label(order["help"], "MutedLabel", true))
+		_pickers[order["key"]] = picker
 	EventBus.event.connect(_on_bus_event)
-	_refresh()
+	refresh()
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
-	if event_name != &"noise" and event_name != &"light":
-		_refresh()
+	if event_name != &"noise" and (event_name != &"tick" or WorldState.tick % 3 == 0):
+		refresh()
 
 
-func _refresh() -> void:
-	for choice: Dictionary in POLICY_CHOICES:
-		var picker: OptionButton = _pickers[choice["key"]]
-		var index: int = (choice["values"] as Array).find(WorldState.policies.get(choice["key"]))
+@warning_ignore("integer_division")
+func refresh() -> void:
+	for order: Dictionary in ORDERS:
+		var index: int = (order["values"] as Array).find(WorldState.policies.get(order["key"]))
 		if index >= 0:
-			picker.select(index)
-	_text.text = describe()
-
-
-static func describe() -> String:
-	var base: Dictionary = WorldState.base
-	var building: Dictionary = WorldState.building(String(base.get("building", "")))
+			(_pickers[order["key"]] as OptionButton).select(index)
+	var key: String = "%d|%s|%s" % [WorldState.tick / 3, WorldState.base.get("building", ""), WorldState.caches.size()]
+	if key == _key:
+		return
+	_key = key
+	Kit.clear(_info)
+	var building: Dictionary = WorldState.building(String(WorldState.base.get("building", "")))
 	if building.is_empty():
-		return ""
+		return
 	var type: Dictionary = Data.entry("buildings", String(building["type"]))
-	var lines: PackedStringArray = []
-	lines.append("[b][font_size=18]Base: %s[/font_size][/b]  —  %s" % [building["name"], type["name"]])
-	var parts: Dictionary = base.get("defense_parts", {})
-	lines.append("Defense [b]%d[/b] = building %d + barricades %d/%d + guards %d + weapons %d + others awake %d" % [
-		roundi(float(base.get("defense", 0.0))), roundi(float(parts.get("building", 0.0))), roundi(float(building["barricade"])),
-		int(type["max_barricade"]), roundi(float(parts.get("guards", 0.0))), roundi(float(parts.get("weapons", 0.0))),
-		roundi(float(parts.get("others", 0.0)))])
-	var level: StringName = base.get("attention_level", &"low")
-	var level_text: Dictionary = {&"low": "low", &"rising": "[color=#f2cc60]rising[/color]", &"high": "[color=#ff7b72]high — infected are being drawn here[/color]"}
-	lines.append("Attention: %s (%d) · Night attacks so far: %d (%d broke in)" % [level_text[level],
-		roundi(float(base.get("attention", 0.0))), int(base.get("attacks", 0)), int(base.get("breaches", 0))])
+	_info.add_child(Kit.label("Base: %s" % building["name"], "SubtitleLabel"))
+	_info.add_child(Kit.label("%s · to move, click another building on the map and choose Move base here." % type["name"], "MutedLabel", true))
+	var defense: Dictionary = Insight.defense_breakdown()
+	var row: HBoxContainer = Kit.hbox()
+	row.add_child(Kit.tip_label("Defense %d" % roundi(float(defense["value"])), defense, "HeadingLabel"))
+	row.add_child(Kit.label("barricades %d of %d · %d attacks so far, %d broke in" % [roundi(float(building["barricade"])),
+		int(type["max_barricade"]), int(WorldState.base.get("attacks", 0)), int(WorldState.base.get("breaches", 0))], "MutedLabel"))
+	_info.add_child(row)
+	var attention: Dictionary = Insight.attention_breakdown()
+	var level: StringName = WorldState.base.get("attention_level", &"low")
+	var state: String = {&"low": "ok", &"rising": "warn", &"high": "danger"}[level]
+	row = Kit.hbox()
+	row.add_child(Kit.tip_label("Attention %d" % roundi(float(attention["value"])), attention, "HeadingLabel"))
+	row.add_child(Kit.chip(String(level), state, "How much the base is giving itself away. Hover the number for why."))
+	_info.add_child(row)
+	_info.add_child(Kit.label(String(attention["forecast"]), "MutedLabel", true))
+	var tank: float = float(building["tank_l"])
+	_info.add_child(Kit.label("Water containers %s of %s L%s" % [Kit.amount(Stores.stored_water_l(WorldState.stores)),
+		Kit.amount(Stores.water_capacity_l(WorldState.stores)),
+		(" · roof tank %s L" % Kit.amount(tank)) if float(building["tank_start_l"]) > 0.0 else ""], "MutedLabel"))
 	for cache: Dictionary in WorldState.caches:
-		lines.append("Cache hidden at %s (%d%% well hidden)" % [WorldState.building(String(cache["building"]))["name"], roundi(float(cache["quality"]) * 100.0)])
-	var infra: Dictionary = WorldState.infrastructure
-	lines.append("Power: %s · Taps: %s · Generator: %s" % [
-		"grid" if infra.get("power_on", false) else "none", "running" if infra.get("mains_on", false) else "dry",
-		"running" if infra.get("generator_running", false) else "off"])
-	var tank: String = ""
-	if float(building["tank_start_l"]) > 0.0:
-		tank = " · building tank %s L (needs boiling)" % _whole(float(building["tank_l"]))
-	lines.append("Water containers: %s of %s L%s" % [_whole(Stores.stored_water_l(WorldState.stores)),
-		_whole(Stores.water_capacity_l(WorldState.stores)), tank])
-	lines.append("")
-	lines.append("[b]Stores[/b]  —  food %s kcal (%.1f person-days at full ration)" % [
-		_whole(Stores.food_kcal(WorldState.stores)), Stores.food_kcal(WorldState.stores) / 2500.0 / maxf(1.0, WorldState.group().size())])
-	var snapshot: Dictionary = Stores.snapshot(WorldState.stores)
-	for category: String in STORE_GROUPS:
-		var parts_text: PackedStringArray = []
-		for item: String in snapshot:
-			var row: Dictionary = Data.entry("items", item)
-			if row.get("category", "") != category:
-				continue
-			var unit: String = "" if row["unit"] == "count" else " " + String(row["unit"])
-			parts_text.append("%s %s%s" % [row["name"], _amount(float(snapshot[item]), row), unit])
-		if not parts_text.is_empty():
-			lines.append("  [color=#9a9a9a]%s:[/color] %s" % [category.capitalize(), " · ".join(parts_text)])
-	return "\n".join(lines)
-
-
-static func _amount(qty: float, row: Dictionary) -> String:
-	if String(row["unit"]) in ["count", "rounds", "units"] or qty >= 10.0:
-		return _whole(qty)
-	return str(snappedf(qty, 0.1))
-
-
-static func _whole(qty: float) -> String:
-	var digits: String = str(roundi(qty))
-	var out: String = ""
-	while digits.length() > 3:
-		out = "," + digits.substr(digits.length() - 3) + out
-		digits = digits.substr(0, digits.length() - 3)
-	return digits + out
+		_info.add_child(Kit.label("Hidden cache at %s (%d%% well hidden). Send someone there to dig it out." % [
+			WorldState.building(String(cache["building"])).get("name", "?"), roundi(float(cache["quality"]) * 100.0)], "InfoLabel", true))

@@ -7,6 +7,8 @@ signal new_run_requested
 signal load_requested(path: String)
 
 const SaveGame := preload("res://core/save_game.gd")
+const Settings := preload("res://ui/settings.gd")
+const Alerts := preload("res://ui/alerts.gd")
 
 var _column: VBoxContainer
 var _message: Label
@@ -16,13 +18,7 @@ func _ready() -> void:
 	if _column != null:
 		return
 	visible = false
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.1, 1.0)
-	style.border_color = Color(1, 1, 1, 0.25)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(20)
-	add_theme_stylebox_override("panel", style)
+	theme_type_variation = "Modal"
 	_column = VBoxContainer.new()
 	_column.add_theme_constant_override("separation", 8)
 	_column.custom_minimum_size = Vector2(520, 0)
@@ -37,6 +33,7 @@ func open_pause() -> void:
 		var slot: String = "save_" + Time.get_datetime_string_from_system(false, true).replace(":", "-").replace(" ", "_")
 		_message.text = "Saved." if SaveGame.save(slot) != "" else "Could not save; see the log.")
 	_add_button("Load…", open_load)
+	_add_button("Settings…", open_settings)
 	_add_button("New run…", func() -> void:
 		close()
 		new_run_requested.emit())
@@ -61,7 +58,7 @@ func open_load() -> void:
 				String(entry["difficulty"]).capitalize(), int(entry["alive"]), entry["saved_at"]]
 		else:
 			label.text = "%s — can't be loaded: %s" % [entry["slot"], entry["error"]]
-			label.modulate = Color(1, 0.6, 0.5)
+			label.theme_type_variation = "DangerLabel"
 		row.add_child(label)
 		var load_button: Button = Button.new()
 		load_button.text = "Load"
@@ -71,6 +68,44 @@ func open_load() -> void:
 		row.add_child(load_button)
 		_column.add_child(row)
 	_add_button("Back", close)
+	_show()
+
+
+## UI scale, alerts that pause the game, and the first-day hints.
+func open_settings() -> void:
+	_clear("Settings")
+	var scale_label: Label = Label.new()
+	scale_label.text = "Interface size: %d%%" % roundi(Settings.ui_scale() * 100.0)
+	_column.add_child(scale_label)
+	var slider: HSlider = HSlider.new()
+	slider.min_value = Settings.MIN_SCALE * 100.0
+	slider.max_value = Settings.MAX_SCALE * 100.0
+	slider.step = 10.0
+	slider.value = Settings.ui_scale() * 100.0
+	slider.focus_mode = Control.FOCUS_NONE
+	slider.custom_minimum_size = Vector2(300, 24)
+	slider.value_changed.connect(func(v: float) -> void:
+		scale_label.text = "Interface size: %d%%" % roundi(v)
+		Settings.set_ui_scale(v / 100.0, get_tree()))
+	_column.add_child(slider)
+	var pause_label: Label = Label.new()
+	pause_label.text = "Pause the game when one of these appears:"
+	pause_label.theme_type_variation = "MutedLabel"
+	_column.add_child(pause_label)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	_column.add_child(grid)
+	for type: String in Alerts.TYPES:
+		var box: CheckBox = CheckBox.new()
+		box.focus_mode = Control.FOCUS_NONE
+		box.text = Alerts.TYPES[type]
+		box.button_pressed = Settings.autopause(type)
+		box.toggled.connect(func(on: bool) -> void: Settings.set_autopause(type, on))
+		grid.add_child(box)
+	_add_button("Show the first-day hints again", func() -> void:
+		Settings.reset_hints()
+		_message.text = "Hints will show again.")
+	_add_button("Back", open_pause)
 	_show()
 
 
@@ -90,10 +125,10 @@ func _clear(title: String) -> void:
 		child.queue_free()
 	var heading: Label = Label.new()
 	heading.text = title
-	heading.add_theme_font_size_override("font_size", 22)
+	heading.theme_type_variation = "TitleLabel"
 	_column.add_child(heading)
 	_message = Label.new()
-	_message.modulate = Color(1, 0.85, 0.5)
+	_message.theme_type_variation = "WarnLabel"
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_column.add_child(_message)
 

@@ -31,10 +31,16 @@ res://
   core/     tick_loop.gd, world_state.gd, event_bus.gd, data_loader.gd, rng.gd
             + sim_run.gd (starts a run), sim_system.gd (system base class),
               stores.gd, body.gd, geo.gd, decisions.gd (plain-data helpers any system may use)
+            + insight.gd (read-only breakdowns and forecasts for the UI, built from system constants)
   systems/  time.gd, survivors.gd, jobs.gd, town.gd, resources.gd,
             infrastructure.gd, infected.gd, base.gd, events.gd, + outcome.gd
-  ui/       map_grid.gd, survivor_panel.gd, building_panel.gd, controls.gd
-            + hud.gd, event_log.gd, base_panel.gd, decision_panel.gd, end_screen.gd, ui_state.gd
+  ui/       hud.gd (layout), controls.gd (top bar), map_grid.gd, building_panel.gd,
+            people_panel.gd + survivor_card.gd + job_board.gd, stores_panel.gd, base_panel.gd,
+            event_log.gd, stats_panel.gd + line_chart.gd, ticker.gd, scavenge_planner.gd,
+            decision_modal.gd, confirm_dialog.gd, alerts.gd + alerts_panel.gd, hints.gd,
+            shortcuts.gd, start_screen.gd, save_menu.gd, end_screen.gd, settings.gd, ui_state.gd
+            + kit.gd/meter.gd/tip_label.gd/tip_panel.gd (widgets)
+            + theme/tokens.gd (colours, sizes) and theme/main_theme.tres (from tools/build_theme.gd)
   tools/    headless_runner.gd (+ headless_run.gd), auto_player.gd, screenshot.tscn,
             make_town.py, run_tests.sh
   tests/    test_milestone_N.gd (entry) + milestone_N_checks.gd, checks_base.gd

@@ -1,55 +1,83 @@
 extends PanelContainer
-## Shown when the run is won or lost: what happened, the score and how it was
-## made, and each survivor's fate. "New run" asks the main scene to start again.
+## Shown when the run is won or lost: what happened and the score, each person's
+## fate, the run as charts, and the key decisions and losses on a timeline.
+## "New run" asks the main scene to start again.
 
 signal new_run_requested
 
+const Kit := preload("res://ui/kit.gd")
+const Tokens := preload("res://ui/theme/tokens.gd")
+const Stats := preload("res://ui/stats_panel.gd")
+
+const TIMELINE_KINDS: Array[String] = ["decision", "loss", "move", "attack"]
+
+var _column: VBoxContainer
+var _charts: GridContainer
+var _timeline: VBoxContainer
 var _text: RichTextLabel
 
 
 func _ready() -> void:
 	visible = false
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.1, 1.0)
-	style.border_color = Color(1, 1, 1, 0.25)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(20)
-	add_theme_stylebox_override("panel", style)
-	var column: VBoxContainer = VBoxContainer.new()
-	column.add_theme_constant_override("separation", 12)
-	add_child(column)
+	theme_type_variation = "Modal"
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(980, 640)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+	_column = Kit.vbox(Tokens.SPACE_M)
+	_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_column)
 	_text = RichTextLabel.new()
 	_text.bbcode_enabled = true
 	_text.fit_content = true
 	_text.scroll_active = false
-	_text.custom_minimum_size = Vector2(600, 0)
-	column.add_child(_text)
-	var row: HBoxContainer = HBoxContainer.new()
+	_text.custom_minimum_size = Vector2(940, 0)
+	_column.add_child(_text)
+	_charts = GridContainer.new()
+	_charts.columns = 3
+	_column.add_child(_charts)
+	_column.add_child(Kit.label("How it went", "HeadingLabel"))
+	_timeline = Kit.vbox(2)
+	_column.add_child(_timeline)
+	var row: HBoxContainer = Kit.hbox()
 	row.alignment = BoxContainer.ALIGNMENT_END
-	column.add_child(row)
-	var close: Button = Button.new()
-	close.text = "Look around"
-	close.focus_mode = Control.FOCUS_NONE
-	close.pressed.connect(func() -> void: visible = false)
-	row.add_child(close)
-	var again: Button = Button.new()
-	again.text = "New run"
-	again.focus_mode = Control.FOCUS_NONE
-	again.pressed.connect(func() -> void:
+	_column.add_child(row)
+	row.add_child(Kit.button("Look around", func() -> void: visible = false, "GhostButton"))
+	row.add_child(Kit.button("New run", func() -> void:
 		visible = false
-		new_run_requested.emit())
-	row.add_child(again)
+		new_run_requested.emit(), "PrimaryButton"))
 	EventBus.event.connect(_on_bus_event)
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
 	if event_name == &"run_won" or event_name == &"run_lost":
-		_text.text = describe(WorldState.outcome)
-		visible = true
-		_center.call_deferred()
-	elif event_name == &"run_started":
+		show_outcome.call_deferred()
+	elif event_name in [&"run_started", &"game_loaded"]:
 		visible = false
+
+
+func show_outcome() -> void:
+	_text.text = describe(WorldState.outcome)
+	Kit.clear(_charts)
+	for chart: Control in Stats.build_charts(WorldState.stats.get("history", [])):
+		chart.custom_minimum_size = Vector2(300, 120)
+		_charts.add_child(chart)
+	Kit.clear(_timeline)
+	for item: Dictionary in WorldState.stats.get("timeline", []):
+		if not TIMELINE_KINDS.has(String(item["kind"])):
+			continue
+		var mark: String = {"decision": "Decided", "loss": "Lost", "move": "Moved", "attack": "Attacked"}[item["kind"]]
+		_timeline.add_child(Kit.label("%s   %s: %s" % [WorldState.clock_string_at(int(item["tick"])), mark, item["text"]],
+			"DangerLabel" if item["kind"] == "loss" else "", true))
+	visible = true
+	set_anchors_preset(Control.PRESET_CENTER)
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
+	offset_left = 0.0
+	offset_right = 0.0
+	offset_top = 0.0
+	offset_bottom = 0.0
+	reset_size()
 
 
 static func describe(outcome: Dictionary) -> String:
@@ -63,22 +91,9 @@ static func describe(outcome: Dictionary) -> String:
 		roundi(float(outcome["score"])), int(outcome["alive"]), int(outcome["full_ration_days"]), roundi(float(outcome["supplies_points"]))])
 	lines.append("Night attacks: %d (%d broke in) · Infected killed by the group: %d" % [
 		int(WorldState.stats.get("attacks", 0)), int(WorldState.stats.get("breaches", 0)), int(WorldState.stats.get("infected_killed", 0))])
-	lines.append("")
 	var fates: Dictionary = outcome["fates"]
+	var parts: PackedStringArray = []
 	for name: String in fates:
-		var fate: String = fates[name]
-		lines.append("  %s — %s" % [name, "[color=#7ee787]alive[/color]" if fate == "alive" else "[color=#ff7b72]%s[/color]" % fate])
+		parts.append("%s: %s" % [name, "alive" if fates[name] == "alive" else "[i]%s[/i]" % fates[name]])
+	lines.append("Fates: " + " · ".join(parts))
 	return "\n".join(lines)
-
-
-## Anchored to the middle of the screen and growing both ways, so the panel stays
-## centred however tall its contents turn out once laid out.
-func _center() -> void:
-	set_anchors_preset(Control.PRESET_CENTER)
-	grow_horizontal = Control.GROW_DIRECTION_BOTH
-	grow_vertical = Control.GROW_DIRECTION_BOTH
-	offset_left = 0.0
-	offset_right = 0.0
-	offset_top = 0.0
-	offset_bottom = 0.0
-	reset_size()
