@@ -21,6 +21,7 @@ const SYSTEM_SCRIPTS: Array[Script] = [
 	preload("res://systems/attention.gd"),
 	preload("res://systems/events.gd"),
 	preload("res://systems/outcome.gd"),
+	preload("res://systems/history.gd"),
 ]
 
 

@@ -60,11 +60,16 @@ func _start_day(day: int) -> void:
 ## Cosine curve from the coolest hour up to the warmest and back down.
 func _update_temperature() -> void:
 	var climate: Dictionary = WorldState.climate
-	var low: float = float(climate["today_min_c"])
-	var high: float = float(climate["today_max_c"])
-	var coolest: float = float(_climate["coolest_hour"])
-	var warmest: float = float(_climate["warmest_hour"])
-	var hour: float = float(WorldState.minute_of_day()) / 60.0
+	climate["temperature_c"] = temperature_at(float(WorldState.minute_of_day()) / 60.0,
+		float(climate["today_min_c"]), float(climate["today_max_c"]))
+
+
+## Air temperature at an hour of the day, given the day's low and high: a cosine
+## from the coolest hour up to the warmest and back down. Shared with the planner.
+static func temperature_at(hour: float, low: float, high: float) -> float:
+	var config: Dictionary = Data.table("scenario")["climate"]
+	var coolest: float = float(config["coolest_hour"])
+	var warmest: float = float(config["warmest_hour"])
 	var warming: float = warmest - coolest
 	var since_coolest: float = fposmod(hour - coolest, 24.0)
 	var warmth: float
@@ -72,7 +77,7 @@ func _update_temperature() -> void:
 		warmth = (1.0 - cos(PI * since_coolest / warming)) / 2.0
 	else:
 		warmth = (1.0 + cos(PI * (since_coolest - warming) / (24.0 - warming))) / 2.0
-	climate["temperature_c"] = low + (high - low) * warmth
+	return low + (high - low) * warmth
 
 
 func _report(message: String) -> void:

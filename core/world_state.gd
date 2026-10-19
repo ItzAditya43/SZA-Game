@@ -172,7 +172,10 @@ static func clock_string_at(at_tick: int) -> String:
 
 
 static func phase_at(at_tick: int) -> StringName:
-	var minute: int = minute_of_day_at(at_tick)
+	return phase_at_minute(minute_of_day_at(at_tick))
+
+
+static func phase_at_minute(minute: int) -> StringName:
 	if minute >= DAYTIME_START_MINUTE and minute < NIGHT_START_MINUTE:
 		return PHASE_DAY
 	return PHASE_NIGHT

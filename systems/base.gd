@@ -201,8 +201,10 @@ func _attack(size: int, zone: Dictionary) -> void:
 		# A handful scratching at a fortress frightens less than a near thing.
 		var closeness: float = clampf(1.5 * strength / maxf(defense, 1.0), 0.3, 1.0)
 		for s: Dictionary in at_base:
-			Traits.add_stress(s, STRESS_ON_ATTACK * closeness, "fights")
+			Traits.add_stress(s, STRESS_ON_ATTACK * closeness, "fights", "night attack")
+		var where: Vector2 = Geo.base_center_m()
 		EventBus.emit_event(&"night_attack", {"size": size, "strength": strength, "defense": defense, "breached": false,
+			"x_m": where.x, "y_m": where.y,
 			"text": "About %d infected hit the base in the dark. The defenses held (%d against %d)." % [size, roundi(defense), roundi(strength)]})
 	else:
 		building["barricade"] = float(building["barricade"]) * 0.5
@@ -212,7 +214,7 @@ func _attack(size: int, zone: Dictionary) -> void:
 		var hurt_chance: float = clampf(BREACH_HURT_BASE + BREACH_HURT_PER_OVERMATCH * (strength - defense) / maxf(defense, 1.0), 0.1, 0.9)
 		var casualties: PackedStringArray = []
 		for s: Dictionary in at_base:
-			Traits.add_stress(s, STRESS_ON_BREACH, "fights")
+			Traits.add_stress(s, STRESS_ON_BREACH, "fights", "base broken into")
 			var chance: float = hurt_chance * Body.injury_multiplier(s) * (ASLEEP_HURT_MULT if s["asleep"] else 1.0)
 			if not Rng.chance(minf(chance, 0.95)):
 				continue
@@ -224,7 +226,9 @@ func _attack(size: int, zone: Dictionary) -> void:
 			else:
 				_hurt(s, roll < BREACH_KILLED_SHARE + BREACH_BITTEN_SHARE)
 				casualties.append(s["name"] + " hurt")
+		var breach_at: Vector2 = Geo.base_center_m()
 		EventBus.emit_event(&"base_breached", {"size": size, "strength": strength, "defense": defense, "breached": true,
+			"x_m": breach_at.x, "y_m": breach_at.y,
 			"text": "About %d infected broke into the base (%d against a defense of %d)%s." % [size, roundi(strength), roundi(defense),
 				": " + ", ".join(casualties) if not casualties.is_empty() else ""]})
 	zone["infected"] = maxf(0.0, float(zone["infected"]) - killed)
@@ -271,7 +275,7 @@ func _on_move_base(payload: Dictionary) -> void:
 		return
 	var transport: Dictionary = _transport(movers, old, target)
 	for s: Dictionary in movers:
-		Traits.add_stress(s, float(_mobility["stress_per_move"]))
+		Traits.add_stress(s, float(_mobility["stress_per_move"]), "", "uprooted by a move")
 	# Loads: one per person on foot, plus handcarts and the vehicle as extra loads.
 	var capacity: Array[float] = []
 	var holders: Array = []

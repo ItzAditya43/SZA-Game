@@ -54,14 +54,23 @@ func _fire(event: Dictionary) -> void:
 		if fill.is_empty():
 			return
 	WorldState.flags["events_fired"][event["id"]] = WorldState.tick
-	EventBus.emit_event(&"story_event", {"id": event["id"], "title": event["title"], "text": String(event["text"]).format(fill)})
+	var story: Dictionary = {"id": event["id"], "title": event["title"], "text": String(event["text"]).format(fill)}
+	for effect: Dictionary in event.get("effects", []):
+		if effect.has("building") or effect.has("landmark"):
+			var pos: Vector2 = _position(effect)
+			story["x_m"] = pos.x
+			story["y_m"] = pos.y
+			break
+	EventBus.emit_event(&"story_event", story)
 	_apply(event.get("effects", []), fill)
 	if event.has("decision"):
 		var decision: Dictionary = event["decision"]
 		var options: Array = []
 		for option: Dictionary in decision["options"]:
-			options.append(Decisions.option(StringName(option["id"]), String(option["label"])))
-		Decisions.create(&"event", String(decision["text"]).format(fill), options, {"event": event["id"], "fill": fill})
+			options.append(Decisions.option(StringName(option["id"]), String(option["label"]),
+				String(option.get("consequence", "")).format(fill), bool(option.get("irreversible", false))))
+		Decisions.create(&"event", String(decision["text"]).format(fill), options, {"event": event["id"], "fill": fill,
+			"unknowns": Array(decision.get("unknowns", []))})
 
 
 ## Someone from the survivor pool who isn't in the group (or gone from it).
@@ -139,7 +148,7 @@ func _apply(effects: Array, fill: Dictionary = {}) -> void:
 				zone["infected"] = float(zone["infected"]) * (1.0 - float(effect["share"]))
 			"group_stress":
 				for s: Dictionary in WorldState.group():
-					Traits.add_stress(s, float(effect["value"]))
+					Traits.add_stress(s, float(effect["value"]), "", "bad news")
 			"add_survivor":
 				EventBus.emit_event(&"command_add_survivor", {"id": String(effect["id"]).format(fill),
 					"bitten": Rng.chance(float(effect.get("bitten_chance", 0.0)))})

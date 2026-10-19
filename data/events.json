@@ -56,8 +56,11 @@
     "decision": {
       "text": "{name} ({profession}, {age}) asks to join the group and says they are not hurt. Let them in?",
       "options": [
-        { "id": "accept", "label": "Let them in", "effects": [ { "type": "add_survivor", "id": "{id}", "bitten_chance": 0.2 } ] },
-        { "id": "refuse", "label": "Turn them away", "effects": [ { "type": "group_stress", "value": 4 } ] } ] } },
+        { "id": "accept", "label": "Let them in", "consequence": "Another pair of hands, and another mouth to feed and water.",
+          "effects": [ { "type": "add_survivor", "id": "{id}", "bitten_chance": 0.2 } ] },
+        { "id": "refuse", "label": "Turn them away", "consequence": "They walk off alone. It sits badly with the group.", "irreversible": true,
+          "effects": [ { "type": "group_stress", "value": 4 } ] } ],
+      "unknowns": [ "Whether {name} is hiding a bite." ] } },
 
   { "id": "market_fire", "title": "Market fire",
     "trigger": { "day_min": 6, "day_max": 28, "hour": 15, "chance_per_day": 0.06,

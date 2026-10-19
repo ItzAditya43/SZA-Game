@@ -13,6 +13,10 @@ const GENERATOR_NOISE_M: float = 150.0
 const LIGHT_VISIBLE_M: float = 1000.0
 ## Generator schedules: evening is 18:00-22:00, night is 18:00-06:00.
 const EVENING_END_MINUTE: int = 22 * 60
+## In-world warnings before a failure, so the player can see it coming without
+## being told a hidden timer: the taps sputter, the lights brown out.
+const MAINS_CUE_TICKS: int = 72
+const POWER_CUE_TICKS: int = 36
 
 
 func setup() -> void:
@@ -30,6 +34,10 @@ func setup() -> void:
 func tick() -> void:
 	var infra: Dictionary = WorldState.infrastructure
 	var now: int = WorldState.tick
+	if infra["mains_on"] and now == int(infra["mains_fail_tick"]) - MAINS_CUE_TICKS:
+		EventBus.emit_event(&"mains_warning", {"text": "The taps sputter and the pressure keeps dropping. The mains may not last much longer: fill every container you can."})
+	if infra["power_on"] and now == int(infra["power_fail_tick"]) - POWER_CUE_TICKS:
+		EventBus.emit_event(&"power_warning", {"text": "The lights keep browning out and the fans slow. The grid sounds close to failing."})
 	if infra["phones_on"] and now >= int(infra["phones_fail_tick"]):
 		infra["phones_on"] = false
 		EventBus.emit_event(&"phones_down", {"text": "Mobile networks and the internet go dark. No more calls home."})

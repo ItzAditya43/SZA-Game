@@ -66,6 +66,13 @@ const CATEGORY_KG_CAP: Dictionary = {
 }
 ## Gear worth carrying home first when the group has none yet.
 const WANTED_GEAR: Dictionary = {"generator": 1.0, "water_drum": 2.0}
+## Planned trips (the scavenge planner): when each departure option leaves.
+const DEPART_MINUTES: Dictionary = {&"midday": 12 * 60, &"dusk": 17 * 60 + 30, &"night": 20 * 60}
+## Loot categories a player can put in order; items not covered keep their usual place after.
+const PRIORITY_GROUPS: Dictionary = {
+	"water": ["water"], "food": ["food"], "medicine": ["medicine"], "fuel": ["fuel"],
+	"materials": ["materials"], "tools": ["gear", "weapon", "comfort", "vehicle"],
+}
 ## Taken along on every trip if the stores have them.
 const TRIP_KIT: Dictionary = {"tourniquet": 1.0, "bandages": 1.0}
 const TRIP_WATER_L: float = 1.5
@@ -87,6 +94,8 @@ func setup() -> void:
 	listen(&"command_set_job", _on_set_job)
 	listen(&"encounter", _on_encounter)
 	listen(&"base_moved", _on_base_moved)
+	listen(&"command_plan_trip", _on_plan_trip)
+	listen(&"command_cancel_plan", _on_cancel_plan)
 	for s: Dictionary in WorldState.survivors:
 		_place_at_base(s)
 		_schedule(s)
@@ -120,6 +129,10 @@ func _schedule(s: Dictionary) -> void:
 		job = &"rest"
 	s["job_now"] = job
 	s["outdoors"] = false
+	# A planned trip is a direct order: it goes ahead even on a rest shift, if they're able.
+	if _plan_due(s) and not s["quarantined"] and not Body.is_incapacitated(s) and float(s["stress"]) < Body.REFUSES_JOBS_STRESS:
+		_start_planned_trip(s)
+		return
 	if job == &"rest":
 		_rest(s, shift)
 		return
@@ -256,8 +269,63 @@ func _start_scavenge(s: Dictionary, shift: StringName) -> void:
 	_begin_trip(s, &"scavenge", target)
 	s["trip"]["packed"] = Stores.snapshot(s["carried"])
 	EventBus.emit_event(&"scavenge_started", {"survivor": s["id"], "building": target["id"],
+		"x_m": float(s["trip"]["dest"].x), "y_m": float(s["trip"]["dest"].y),
 		"text": "%s sets out for %s (%s, %.1f km)." % [s["name"], target["name"],
 			Data.entry("buildings", String(target["type"]))["name"].to_lower(), float(s["trip"]["distance_m"]) / 1000.0]})
+
+
+# --- Planned trips (the scavenge planner) ---
+
+func _on_plan_trip(payload: Dictionary) -> void:
+	var s: Dictionary = WorldState.survivor(String(payload["survivor"]))
+	var target: Dictionary = WorldState.building(String(payload["target"]))
+	if s.is_empty() or target.is_empty() or target["id"] == WorldState.base.get("building", ""):
+		push_error("Jobs: bad command_plan_trip %s" % payload)
+		return
+	var depart: StringName = StringName(payload.get("depart", &"now"))
+	s["plan"] = {"target": target["id"], "depart": depart, "depart_tick": departure_tick(depart),
+		"priorities": Array(payload.get("priorities", []))}
+	EventBus.emit_event(&"trip_planned", {"survivor": s["id"], "building": target["id"],
+		"text": "%s will leave for %s %s." % [s["name"], target["name"], _depart_words(depart)]})
+
+
+func _on_cancel_plan(payload: Dictionary) -> void:
+	var s: Dictionary = WorldState.survivor(String(payload["survivor"]))
+	if not s.is_empty():
+		s.erase("plan")
+
+
+## The tick a planned departure happens: now, or the next 12:00 / 17:30 / 20:00.
+@warning_ignore("integer_division")
+static func departure_tick(depart: StringName) -> int:
+	if not DEPART_MINUTES.has(depart):
+		return WorldState.tick
+	var minute: int = int(DEPART_MINUTES[depart])
+	var ahead: int = posmod(minute - WorldState.minute_of_day(), WorldState.MINUTES_PER_DAY)
+	return WorldState.tick + ahead / WorldState.MINUTES_PER_TICK
+
+
+static func _depart_words(depart: StringName) -> String:
+	return {&"now": "now", &"midday": "in the midday heat (12:00)", &"dusk": "at dusk (17:30)",
+		&"night": "after dark (20:00)"}.get(depart, "now")
+
+
+func _plan_due(s: Dictionary) -> bool:
+	return s.has("plan") and WorldState.tick >= int(s["plan"]["depart_tick"])
+
+
+func _start_planned_trip(s: Dictionary) -> void:
+	var plan: Dictionary = s["plan"]
+	s.erase("plan")
+	s["trip_shift"] = shift_index()
+	var target: Dictionary = WorldState.building(String(plan["target"]))
+	_pack_for_trip(s)
+	_begin_trip(s, &"scavenge", target)
+	s["trip"]["packed"] = Stores.snapshot(s["carried"])
+	s["trip"]["priorities"] = plan["priorities"]
+	EventBus.emit_event(&"scavenge_started", {"survivor": s["id"], "building": target["id"],
+		"x_m": float(s["trip"]["dest"].x), "y_m": float(s["trip"]["dest"].y),
+		"text": "%s sets out for %s as planned (%.1f km)." % [s["name"], target["name"], float(s["trip"]["distance_m"]) / 1000.0]})
 
 
 func _begin_trip(s: Dictionary, kind: StringName, target: Dictionary) -> void:
@@ -365,11 +433,12 @@ func _arrive(s: Dictionary) -> void:
 	var hours: float = SEARCH_HOURS * (NIGHT_SEARCH_TIME_MULT if WorldState.phase() == WorldState.PHASE_NIGHT else 1.0)
 	trip["work_ticks_left"] = roundi(hours * 6.0)
 	building["visits"] = int(building["visits"]) + 1
+	building["last_visit_tick"] = WorldState.tick
 	_recover_caches(s, building)
 	if building["locked"]:
 		building["locked"] = false
 		EventBus.emit_event(&"noise", {"x_m": s["x_m"], "y_m": s["y_m"], "radius_m": NOISE_BREAK_DOOR_M, "source": &"door"})
-		EventBus.emit_event(&"door_forced", {"survivor": s["id"], "building": building["id"],
+		EventBus.emit_event(&"door_forced", {"survivor": s["id"], "building": building["id"], "x_m": s["x_m"], "y_m": s["y_m"],
 			"text": "%s forces the door of %s. The noise carries." % [s["name"], building["name"]]})
 
 
@@ -381,7 +450,7 @@ func _take_loot(s: Dictionary) -> void:
 		share *= NIGHT_SEARCH_SHARE_MULT
 	var capacity: float = CARRY_KG * Traits.mult(s, "carry_kg_mult") * clampf(Body.work_speed(s), MIN_SPEED_MULT, 1.0) - _carried_kg(s)
 	var category_kg: Dictionary = {}
-	for item: String in _loot_order():
+	for item: String in _loot_order(s["trip"].get("priorities", [])):
 		var item_share: float = share
 		if Data.entry("items", item).get("category", "") == "medicine":
 			item_share = minf(SEARCH_SHARE_MAX, share * Traits.mult(s, "medicine_find_mult"))
@@ -402,14 +471,25 @@ func _take_loot(s: Dictionary) -> void:
 		category_kg[category] = float(category_kg.get(category, 0.0)) + kg
 
 
-## Gear the group lacks jumps the queue, right after medicine.
-func _loot_order() -> Array[String]:
+## Gear the group lacks jumps the queue, right after medicine. A planned trip's
+## priorities (categories in the player's order) come first, if given.
+func _loot_order(priorities: Array = []) -> Array[String]:
 	var order: Array[String] = LOOT_PRIORITY.duplicate()
 	for item: String in WANTED_GEAR:
 		if Stores.total(WorldState.stores, item) < float(WANTED_GEAR[item]):
 			order.erase(item)
 			order.insert(order.find("ammo"), item)
-	return order
+	if priorities.is_empty():
+		return order
+	var ranked: Array[String] = []
+	for group: String in priorities:
+		for item: String in order:
+			if String(Data.entry("items", item).get("category", "")) in PRIORITY_GROUPS.get(group, []) and not ranked.has(item):
+				ranked.append(item)
+	for item: String in order:
+		if not ranked.has(item):
+			ranked.append(item)
+	return ranked
 
 
 func _head_back(s: Dictionary) -> void:
@@ -453,6 +533,7 @@ func _return_home(s: Dictionary) -> void:
 	s["trip"] = {}
 	_place_at_base(s)
 	EventBus.emit_event(&"scavenge_returned", {"survivor": s["id"], "building": building.get("id", ""),
+		"x_m": float(trip["dest"].x), "y_m": float(trip["dest"].y),
 		"loot": summary, "hours": hours, "kg": kg,
 		"text": "%s is back from %s after %.1f h with %.1f kg: %s." % [s["name"], building.get("name", "town"), hours, kg, _loot_text(summary)]})
 

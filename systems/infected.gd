@@ -108,13 +108,16 @@ func tick() -> void:
 
 ## Activity right now, 0..1: lowest in the midday heat, highest at night.
 static func activity() -> float:
-	var minute: int = WorldState.minute_of_day()
-	if WorldState.phase() == WorldState.PHASE_NIGHT:
+	return activity_at(WorldState.minute_of_day(), float(WorldState.climate.get("temperature_c", 30.0)))
+
+
+## Activity at a minute of the day and air temperature. Shared with the planner.
+static func activity_at(minute: int, temp: float) -> float:
+	if WorldState.phase_at_minute(minute) == WorldState.PHASE_NIGHT:
 		return ACTIVITY_NIGHT
 	if minute < 8 * 60 or minute >= 16 * 60:
 		return ACTIVITY_DAWN_DUSK
 	if minute >= MIDDAY_START_MINUTE and minute < MIDDAY_END_MINUTE:
-		var temp: float = float(WorldState.climate.get("temperature_c", 30.0))
 		return ACTIVITY_DAY * clampf(1.0 - (temp - HEAT_SLOWDOWN_FROM_C) * HEAT_SLOWDOWN_PER_C, HEAT_SLOWDOWN_FLOOR, 1.0)
 	return ACTIVITY_DAY
 
@@ -248,7 +251,7 @@ func _pull(pos: Vector2, radius: float, pull_max: float, source: StringName) -> 
 	WorldState.zones[target]["infected"] = float(WorldState.zones[target]["infected"]) + moved
 	if moved >= 5.0 and source in [&"gunshot", &"generator", &"hammering"]:
 		var what: String = {&"gunshot": "The gunshot", &"generator": "The generator", &"hammering": "The hammering"}[source]
-		EventBus.emit_event(&"noise_drew_infected", {"source": source, "zone": target, "moved": moved,
+		EventBus.emit_event(&"noise_drew_infected", {"source": source, "zone": target, "moved": moved, "x_m": pos.x, "y_m": pos.y,
 			"text": "%s drew about %d infected toward %s." % [what, roundi(moved), zone_name(target)]})
 
 
@@ -267,14 +270,10 @@ func _roll_encounter(s: Dictionary) -> void:
 	var exposure: Dictionary = s["exposure"]
 	var zone: Dictionary = WorldState.zones[int(exposure.get("zone", 0))]
 	var density: float = float(zone["infected"]) / ZONE_AREA_KM2
-	var act: float = activity()
-	var mult: float = 1.0
+	var danger: float = -1.0
 	if not exposure["outdoors"]:
-		var building: Dictionary = WorldState.building(String(exposure["building"]))
-		mult = INSIDE_EXPOSURE_BASE + INSIDE_EXPOSURE_PER_DANGER * float(building.get("danger", 0.3))
-	mult *= 1.0 + float(exposure["noise_m"]) * NOISE_EXPOSURE_PER_M
-	mult *= maxf(0.3, STEALTH_BASE - STEALTH_PER_SKILL * Body.skill(s, "scavenging"))
-	var chance: float = 1.0 - exp(-ENCOUNTER_K * Difficulty.mult("encounters") * density * act * mult)
+		danger = float(WorldState.building(String(exposure["building"])).get("danger", 0.3))
+	var chance: float = encounter_chance(density, activity(), danger, float(exposure["noise_m"]), Body.skill(s, "scavenging"))
 	if not Rng.chance(chance):
 		return
 	var met: int = 1 + floori(Rng.randf() * (1.0 + density * GROUP_PER_DENSITY))
@@ -282,6 +281,17 @@ func _roll_encounter(s: Dictionary) -> void:
 
 
 @warning_ignore("integer_division")
+## Chance of meeting infected in one tick. danger < 0 means out in the open;
+## otherwise it is the building's danger while searching inside. Shared with the planner.
+static func encounter_chance(density: float, act: float, danger: float, noise_m: float, scavenging: float) -> float:
+	var mult: float = 1.0
+	if danger >= 0.0:
+		mult = INSIDE_EXPOSURE_BASE + INSIDE_EXPOSURE_PER_DANGER * danger
+	mult *= 1.0 + noise_m * NOISE_EXPOSURE_PER_M
+	mult *= maxf(0.3, STEALTH_BASE - STEALTH_PER_SKILL * scavenging)
+	return 1.0 - exp(-ENCOUNTER_K * Difficulty.mult("encounters") * density * act * mult)
+
+
 func _resolve(s: Dictionary, zone: Dictionary, met: int) -> void:
 	var night: bool = WorldState.phase() == WorldState.PHASE_NIGHT
 	var place: String = _place_name(s)
@@ -319,7 +329,7 @@ func _resolve(s: Dictionary, zone: Dictionary, met: int) -> void:
 	killed_infected = mini(killed_infected, roundi(float(zone["infected"])))
 	zone["infected"] = maxf(0.0, float(zone["infected"]) - killed_infected)
 	WorldState.stats["infected_killed"] = int(WorldState.stats["infected_killed"]) + killed_infected
-	Traits.add_stress(s, float(STRESS_BY_OUTCOME[outcome]), "fights")
+	Traits.add_stress(s, float(STRESS_BY_OUTCOME[outcome]), "fights", "met infected (%s)" % String(outcome).replace("_", " "))
 	match outcome:
 		&"injured":
 			s["injuries"].append(_random_wound())
@@ -341,6 +351,7 @@ func _resolve(s: Dictionary, zone: Dictionary, met: int) -> void:
 		&"killed": "%s was killed by %s near %s." % [s["name"], group, place],
 	}[outcome]
 	EventBus.emit_event(&"encounter", {"survivor": s["id"], "outcome": outcome, "met": met, "zone": zone["index"],
+		"x_m": s["x_m"], "y_m": s["y_m"],
 		"shots": shots, "abort_trip": outcome in [&"injured", &"bitten"], "text": text})
 
 

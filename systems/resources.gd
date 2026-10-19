@@ -153,7 +153,9 @@ func _eat(s: Dictionary, meals: int) -> void:
 	for item: String in EATING_ORDER:
 		var got: float = Stores.take(WorldState.stores, item, wanted - eaten)
 		if got > 0.0 and item == "cooked_meal":
+			var before: float = float(s["stress"])
 			s["stress"] = maxf(0.0, float(s["stress"]) - COOKED_MEAL_STRESS_RELIEF * minf(1.0, got / (allowance / meals)))
+			Traits.note_stress(s, "hot meal", float(s["stress"]) - before)
 		eaten += got
 		if eaten >= wanted - Stores.EPSILON:
 			break

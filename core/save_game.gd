@@ -11,7 +11,10 @@ const SimRun := preload("res://core/sim_run.gd")
 
 ## Bump whenever the shape of WorldState changes, and add a migration below or
 ## let older saves be refused with a clear message.
-const SAVE_VERSION: int = 1
+## 2: stress causes, last night's sleep, planned trips, last visits, daily history
+## and the timeline (UI/UX overhaul). Version 1 saves are migrated on load.
+const SAVE_VERSION: int = 2
+const OLDEST_LOADABLE_VERSION: int = 1
 const SAVE_DIR: String = "user://saves"
 const AUTOSAVE_SLOTS: int = 3
 
@@ -62,11 +65,24 @@ static func load_game(path: String) -> String:
 	if not world is Dictionary or not saved_log is Array:
 		return "That save is damaged and can't be loaded."
 	SimRun.start(int(info["seed"]), String(info["difficulty"]), Array(info["roster"]))
+	_migrate(world, int(info["save_version"]))
 	WorldState.from_dict(world)
 	Rng.set_state(String(info["rng_state"]).to_int())
 	EventBus.event_log.assign(saved_log)
 	EventBus.emit_event(&"game_loaded", {"text": "Loaded the save from %s (%s)." % [info["saved_at"], info["clock"]]})
 	return ""
+
+
+## Brings an older save's world up to the current shape.
+static func _migrate(world: Dictionary, version: int) -> void:
+	if version < 2:
+		# Version 1 had no history or timeline; start them from the moment of loading.
+		var stats: Dictionary = world.get("stats", {})
+		if not stats.has("history"):
+			stats["history"] = []
+		if not stats.has("timeline"):
+			stats["timeline"] = []
+		world["stats"] = stats
 
 
 ## The save's JSON, or {"error": message}. Refuses unknown versions clearly.
@@ -78,7 +94,7 @@ static func read(path: String) -> Dictionary:
 	if not parsed is Dictionary or not parsed.has("save_version"):
 		return {"error": "That file isn't a Survival Sim save."}
 	var version: int = int(parsed["save_version"])
-	if version != SAVE_VERSION:
+	if version < OLDEST_LOADABLE_VERSION or version > SAVE_VERSION:
 		return {"error": "That save is from a different version of the game (save version %d, this game reads %d) and can't be loaded." % [version, SAVE_VERSION]}
 	return parsed
 

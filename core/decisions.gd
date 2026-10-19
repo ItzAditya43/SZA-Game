@@ -5,7 +5,8 @@ extends RefCounted
 ## choice and calls resolve(). TickLoop auto-pauses on `decision_needed`.
 
 
-## options: Array of {"id": StringName, "label": String}. Returns the decision id.
+## options: Array from option(). data may carry "unknowns": Array of strings the
+## group can't know yet. Returns the decision id.
 static func create(kind: StringName, text: String, options: Array, data: Dictionary = {}) -> int:
 	var id: int = WorldState.new_id()
 	var decision: Dictionary = {"id": id, "kind": kind, "text": text, "options": options, "tick": WorldState.tick}
@@ -27,5 +28,7 @@ static func resolve(id: int) -> void:
 		func(d: Dictionary) -> bool: return int(d["id"]) != id)
 
 
-static func option(id: StringName, label: String) -> Dictionary:
-	return {"id": id, "label": label}
+## `consequence` is what the group knows will follow; `irreversible` options never
+## get default focus in the UI.
+static func option(id: StringName, label: String, consequence: String = "", irreversible: bool = false) -> Dictionary:
+	return {"id": id, "label": label, "consequence": consequence, "irreversible": irreversible}
