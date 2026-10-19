@@ -11,6 +11,7 @@ const Stores := preload("res://core/stores.gd")
 const Decisions := preload("res://core/decisions.gd")
 const Geo := preload("res://core/geo.gd")
 const Difficulty := preload("res://core/difficulty.gd")
+const Traits := preload("res://core/traits.gd")
 
 const TICK_DAYS: float = 1.0 / 144.0
 const TICK_HOURS: float = 1.0 / 6.0
@@ -117,9 +118,13 @@ const HIDE_BITE_PER_STRESS: float = 0.0025
 func setup() -> void:
 	listen(&"decision_made", _on_decision)
 	listen(&"command_add_survivor", _on_add_survivor)
-	for row: Dictionary in Data.table("survivors"):
-		if row.get("role", "") == "starting":
-			WorldState.survivors.append(_at_base(Body.new_survivor(row)))
+	var roster: Array = WorldState.flags.get("roster", Data.table("scenario")["default_roster"])
+	for id: String in roster:
+		var row: Dictionary = Data.entry("survivors", id)
+		if row.is_empty():
+			push_error("Survivors: no survivor '%s' in the pool" % id)
+			continue
+		WorldState.survivors.append(_at_base(Body.new_survivor(row)))
 
 
 func tick() -> void:
@@ -142,7 +147,10 @@ func tick() -> void:
 			_daily(s)
 		if dawn:
 			# Sleep is tallied each morning over the night just gone.
-			s["sleep_debt_h"] = clampf(float(s["sleep_debt_h"]) + SLEEP_NEED_H - float(s["slept_h"]), 0.0, MAX_SLEEP_DEBT_H)
+			var need: float = SLEEP_NEED_H
+			if WorldState.base.get("attention_level", &"low") != &"low":
+				need += Traits.add(s, "sleep_need_add_when_noisy_h")
+			s["sleep_debt_h"] = clampf(float(s["sleep_debt_h"]) + need - float(s["slept_h"]), 0.0, MAX_SLEEP_DEBT_H)
 			s["slept_h"] = 0.0
 		_check_death(s)
 
@@ -155,7 +163,8 @@ func _body(s: Dictionary) -> void:
 	if not s["outdoors"]:
 		air -= INDOOR_COOLING_C
 	# Water and energy.
-	var water_need: float = WATER_L_PER_DAY_BASE * (1.0 + WATER_EXTRA_PER_C * maxf(0.0, air - WATER_HEAT_THRESHOLD_C))
+	var heat_extra: float = WATER_EXTRA_PER_C * maxf(0.0, air - WATER_HEAT_THRESHOLD_C) * Traits.mult(s, "water_heat_mult")
+	var water_need: float = WATER_L_PER_DAY_BASE * (1.0 + heat_extra)
 	s["water_deficit_l"] = float(s["water_deficit_l"]) + water_need * float(activity["water"]) * TICK_DAYS
 	var size: float = pow(float(s["weight_kg"]) / REFERENCE_WEIGHT_KG, 0.75)
 	s["kcal_debt"] = float(s["kcal_debt"]) + KCAL_PER_DAY_AT_REST * size * float(activity["kcal"]) * TICK_DAYS
@@ -165,7 +174,7 @@ func _body(s: Dictionary) -> void:
 		s["slept_h"] = float(s["slept_h"]) + TICK_HOURS
 	# Core temperature: exertion in heat versus sweating (which needs water).
 	var core: float = float(s["core_temp_c"])
-	core += float(activity["heat"]) * maxf(0.0, air - HEAT_GAIN_ABOVE_C) * HEAT_GAIN_PER_C_PER_TICK
+	core += float(activity["heat"]) * maxf(0.0, air - HEAT_GAIN_ABOVE_C) * HEAT_GAIN_PER_C_PER_TICK * Traits.mult(s, "heat_gain_mult")
 	if core > Body.NORMAL_CORE_C:
 		var cooling: float = COOLING_PER_TICK * (0.5 if float(s["water_deficit_l"]) >= Body.THIRSTY_L else 1.0)
 		core = maxf(Body.NORMAL_CORE_C, core - cooling)
@@ -456,7 +465,9 @@ func _stress(s: Dictionary) -> void:
 	elif debt >= Body.HUNGRY_KCAL:
 		delta += float(STRESS_PER_DAY["hungry"])
 	if not s["injuries"].is_empty():
-		delta += float(STRESS_PER_DAY["wounded"])
+		delta += Traits.mult(s, "stress_from_wounds_mult") * float(STRESS_PER_DAY["wounded"])
+	if s.get("craving", false):
+		delta += Traits.add(s, "stress_without_cigarettes_per_day")
 	if Body.worst_infection(s) != &"none":
 		delta += float(STRESS_PER_DAY["infection"])
 	if not s["illness"].is_empty():
@@ -468,7 +479,7 @@ func _stress(s: Dictionary) -> void:
 	if delta == 0.0:
 		delta -= STRESS_RELIEF_CALM_PER_DAY
 	else:
-		delta *= Difficulty.mult("stress")
+		delta = Traits.stress_gain(s, delta)
 	if s["activity"] == &"sleeping":
 		delta -= STRESS_RELIEF_SLEEPING_PER_DAY
 	elif s["activity"] == &"resting":
@@ -479,13 +490,17 @@ func _stress(s: Dictionary) -> void:
 func _group_stress(amount: float, except: Dictionary = {}) -> void:
 	for other: Dictionary in WorldState.survivors:
 		if other["status"] == &"ok" and other["id"] != except.get("id", ""):
-			other["stress"] = clampf(float(other["stress"]) + amount * Difficulty.mult("stress"), 0.0, 100.0)
+			Traits.add_stress(other, amount, "deaths")
 
 
 # --- Daily ---
 
-## At midnight: infection and illness rolls, and whether anyone leaves.
+## At midnight: cigarettes, infection and illness rolls, and whether anyone leaves.
 func _daily(s: Dictionary) -> void:
+	var packs: float = Traits.add(s, "cigarettes_per_day")
+	if packs > 0.0:
+		var supply: Dictionary = WorldState.stores if s["location"] == &"base" else s["carried"]
+		s["craving"] = Stores.take(supply, "cigarettes", packs) < packs
 	for injury: Dictionary in s["injuries"]:
 		if injury["infection"] != &"none":
 			continue
@@ -567,6 +582,7 @@ func _at_base(s: Dictionary) -> Dictionary:
 func _on_add_survivor(payload: Dictionary) -> void:
 	var row: Dictionary = Data.entry("survivors", String(payload["id"]))
 	if row.is_empty() or not WorldState.survivor(String(payload["id"])).is_empty():
+		push_error("Survivors: cannot add '%s'" % payload["id"])
 		return
 	var s: Dictionary = _at_base(Body.new_survivor(row))
 	WorldState.survivors.append(s)
@@ -588,7 +604,7 @@ func _on_decision(payload: Dictionary) -> void:
 	match choice:
 		&"quarantine":
 			s["quarantined"] = true
-			s["stress"] = clampf(float(s["stress"]) + STRESS_ON_QUARANTINE, 0.0, 100.0)
+			Traits.add_stress(s, STRESS_ON_QUARANTINE)
 			EventBus.emit_event(&"survivor_quarantined", {"survivor": s["id"], "text": "%s is locked in the quarantine room." % s["name"]})
 		&"exile":
 			s["status"] = &"exiled"
@@ -615,7 +631,11 @@ func _give_antibiotics(s: Dictionary, injury_id: int) -> void:
 		if injury["infection"] == &"sepsis":
 			var medic: Dictionary = _medic_at_base()
 			var skill: float = Body.skill(medic, "medicine") if not medic.is_empty() else 1.0
-			cured = Rng.chance(ANTIBIOTIC_SEPSIS_SUCCESS_BASE + ANTIBIOTIC_SEPSIS_SUCCESS_PER_MEDICINE * skill)
+			var expert: float = 0.0
+			for other: Dictionary in WorldState.group():
+				if other["location"] == &"base":
+					expert = maxf(expert, Traits.add(other, "sepsis_cure_add"))
+			cured = Rng.chance(ANTIBIOTIC_SEPSIS_SUCCESS_BASE + ANTIBIOTIC_SEPSIS_SUCCESS_PER_MEDICINE * skill + expert)
 		if cured:
 			injury["infection"] = &"none"
 			injury["infection_h"] = 0.0

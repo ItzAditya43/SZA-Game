@@ -36,6 +36,7 @@ func tick() -> void:
 		return
 	var climate: Dictionary = WorldState.climate
 	var indoor_c: float = (float(climate["today_min_c"]) + float(climate["today_max_c"])) / 2.0 - INDOOR_COOLING_C
+	_search_caches()
 	for building: Dictionary in WorldState.buildings:
 		if building["id"] == WorldState.base.get("building", ""):
 			continue
@@ -74,6 +75,19 @@ static func growth_weights(layout: Dictionary) -> Array:
 		var zone: int = (int(b["y"]) / size) * cols + int(b["x"]) / size
 		weights[zone] = float(weights[zone]) + float(zones["growth_weight_per_house"] if b["type"] == "house" else zones["growth_weight_per_other_building"])
 	return weights
+
+
+## Other survivors stumble on hidden caches: the building's looted rate, scaled
+## down, and less likely the better it was hidden (data/mobility.json).
+func _search_caches() -> void:
+	var scale: float = float(Data.table("mobility")["cache"]["find_scale"])
+	for cache: Dictionary in WorldState.caches.duplicate():
+		var building: Dictionary = WorldState.building(String(cache["building"]))
+		var rate: float = float(Data.entry("buildings", String(building["type"]))["daily_looted_rate"]) * Difficulty.mult("looted_by_others")
+		if Rng.chance(rate * scale * (1.0 - float(cache["quality"]))):
+			WorldState.caches.erase(cache)
+			EventBus.emit_event(&"cache_lost", {"building": building["id"],
+				"text": "Someone found the supplies you hid at %s." % building["name"]})
 
 
 func _new_building(row: Dictionary) -> Dictionary:

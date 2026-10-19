@@ -49,15 +49,15 @@
     "text": "The district radio stops mid-sentence and does not come back. Nobody is coming.",
     "effects": [ { "type": "group_stress", "value": 6 } ] },
 
-  { "id": "stranger", "title": "A stranger at the gate",
+  { "id": "stranger", "title": "A stranger at the gate", "stranger_from_pool": true,
     "trigger": { "day_min": 4, "day_max": 20, "hour": 17, "chance_per_day": 0.1,
       "requires": [ { "type": "group_size_at_most", "value": 5 } ] },
-    "text": "A young woman calls from the street: Kavya, a schoolteacher, alone and out of water. She asks to join you.",
+    "text": "Someone calls from the street: {name}, {age}, a {profession}, alone and out of water, asking to join you.",
     "decision": {
-      "text": "Kavya, a schoolteacher, asks to join the group. She says she is not hurt. Let her in?",
+      "text": "{name} ({profession}, {age}) asks to join the group and says they are not hurt. Let them in?",
       "options": [
-        { "id": "accept", "label": "Let her in", "effects": [ { "type": "add_survivor", "id": "kavya", "bitten_chance": 0.2 } ] },
-        { "id": "refuse", "label": "Turn her away", "effects": [ { "type": "group_stress", "value": 4 } ] } ] } },
+        { "id": "accept", "label": "Let them in", "effects": [ { "type": "add_survivor", "id": "{id}", "bitten_chance": 0.2 } ] },
+        { "id": "refuse", "label": "Turn them away", "effects": [ { "type": "group_stress", "value": 4 } ] } ] } },
 
   { "id": "market_fire", "title": "Market fire",
     "trigger": { "day_min": 6, "day_max": 28, "hour": 15, "chance_per_day": 0.06,

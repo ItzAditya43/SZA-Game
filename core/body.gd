@@ -26,6 +26,8 @@ const REFUSES_JOBS_STRESS: float = 80.0
 const MAY_LEAVE_STRESS: float = 95.0
 const INCAPACITATED_HEALTH: float = 15.0
 
+const Traits := preload("res://core/traits.gd")
+
 ## Work speed multiplier per active wound type, applied once per wound.
 const WOUND_WORK_SPEED: Dictionary = {&"cut": 0.95, &"laceration": 0.8, &"arterial": 0.5, &"bite": 0.9}
 
@@ -39,6 +41,8 @@ static func new_survivor(row: Dictionary) -> Dictionary:
 		"id": String(row["id"]),
 		"name": String(row["name"]),
 		"profession": String(row["profession"]),
+		"background": String(row.get("background", "")),
+		"traits": Array(row.get("traits", [])),
 		"age": int(row["age"]),
 		"weight_kg": weight,
 		"skills": {
@@ -152,12 +156,14 @@ static func work_speed(s: Dictionary) -> float:
 			speed *= 0.1
 	for injury: Dictionary in s["injuries"]:
 		speed *= float(WOUND_WORK_SPEED.get(injury["type"], 1.0))
+	var night: bool = WorldState.phase() == WorldState.PHASE_NIGHT
+	speed *= Traits.mult(s, "night_work_speed_mult" if night else "day_work_speed_mult")
 	return speed
 
 
 ## Skill after fatigue and sleep-debt penalties, never below 1.
 static func skill(s: Dictionary, skill_name: String) -> float:
-	var value: float = float(s["skills"][skill_name])
+	var value: float = float(s["skills"][skill_name]) + Traits.add(s, skill_name + "_add")
 	if float(s["fatigue"]) > EXHAUSTED_FATIGUE:
 		value -= 2.0
 	if float(s["sleep_debt_h"]) >= SLEEP_DEBT_MISTAKES_H:

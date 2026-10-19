@@ -70,8 +70,12 @@ func _check_stranger() -> void:
 			system.call("_fire", event)
 	var decision: Dictionary = WorldState.pending_decisions.back()
 	expect("the stranger at the gate is a decision", decision["kind"] == &"event" and decision["options"].size() == 2)
+	var stranger: String = decision["fill"]["id"]
+	expect("the stranger is someone from the survivor pool who isn't in the group",
+		not Data.entry("survivors", stranger).is_empty() and WorldState.survivor(stranger).is_empty()
+		and String(decision["text"]).contains(String(decision["fill"]["name"])), decision["text"])
 	EventBus.emit_event(&"decision_made", {"id": decision["id"], "option": &"accept"})
-	expect("letting her in adds Kavya to the group", not WorldState.survivor("kavya").is_empty()
+	expect("letting them in adds them to the group", not WorldState.survivor(stranger).is_empty()
 		and WorldState.group().size() == 6)
 
 

@@ -51,6 +51,8 @@ func reset() -> void:
 	speed = Speed.PAUSED
 	_resume_speed = Speed.X1
 	_accumulator = 0.0
+	for system: SimSystem in _systems:
+		system.shutdown()
 	_systems.clear()
 
 

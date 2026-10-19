@@ -67,5 +67,5 @@ func _run_generator() -> void:
 	Stores.take(WorldState.stores, "fuel", GENERATOR_FUEL_L_PER_H / 6.0)
 	if WorldState.tick % 6 == 0:
 		var pos: Vector2 = Geo.base_center_m()
-		EventBus.emit_event(&"noise", {"x_m": pos.x, "y_m": pos.y, "radius_m": GENERATOR_NOISE_M, "source": &"generator"})
+		EventBus.emit_event(&"noise", {"x_m": pos.x, "y_m": pos.y, "radius_m": GENERATOR_NOISE_M, "source": &"generator", "continuous": true})
 		EventBus.emit_event(&"light", {"x_m": pos.x, "y_m": pos.y, "radius_m": LIGHT_VISIBLE_M})

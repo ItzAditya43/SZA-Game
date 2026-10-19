@@ -1,7 +1,7 @@
 extends Node
 ## Opens the game screen, fast-forwards the simulation, and saves a screenshot.
 ## godot res://tools/screenshot.tscn -- --difficulty=normal --seed=42 --hours=30 --tab=0 --out=/tmp/shot.png
-## Without --difficulty the shot shows the start screen.
+## Without --difficulty the shot shows the start screen. --menu=pause|load opens a menu.
 ## Used to check the UI without clicking through it by hand.
 
 const SimRun := preload("res://core/sim_run.gd")
@@ -20,12 +20,18 @@ func _ready() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_viewport)
 	var main: Node = load("res://main.tscn").instantiate()
+	main.set("autosave_enabled", false)
 	_viewport.add_child(main)
 	_hud = main.get_node("HUD")
 	TickLoop.set_speed(TickLoop.Speed.PAUSED)
 	TickLoop.run_headless(SimRun.int_arg("hours", 0) * 6)
 	var tabs: TabContainer = _hud.get("tabs")
 	tabs.current_tab = clampi(SimRun.int_arg("tab", 0), 0, tabs.get_tab_count() - 1)
+	match _string_arg("menu", ""):
+		"pause":
+			_hud.get("save_menu").open_pause()
+		"load":
+			_hud.get("save_menu").open_load()
 	var building: String = _string_arg("select", "")
 	if building != "":
 		_hud.get("ui_state").select_building(building)

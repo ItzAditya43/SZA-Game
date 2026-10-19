@@ -11,6 +11,7 @@ const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
 const Difficulty := preload("res://core/difficulty.gd")
+const Traits := preload("res://core/traits.gd")
 
 const ZONE_AREA_KM2: float = 0.25
 const ZONE_HALF_M: float = 250.0
@@ -35,8 +36,6 @@ const WATER_SEEKING_PER_HOUR: float = 0.005
 const WATER_SEEKING_ABOVE_C: float = 35.0
 ## Noise pulls at most this share of a zone per event, scaled by how far into the zone the sound reaches.
 const NOISE_PULL_MAX: float = 0.15
-## Light at night is seen from far away but pulls gently, every hour it burns.
-const LIGHT_PULL_MAX: float = 0.02
 
 # --- Die-off ---
 ## Zones with water lose fewer of their infected.
@@ -47,7 +46,7 @@ const HEAT_WAVE_DIE_OFF_PER_DAY: float = 0.005
 
 # --- Encounters ---
 ## Chance per tick of meeting infected = 1 - exp(-K x density x activity x modifiers), density per km².
-const ENCOUNTER_K: float = 2.4e-5
+const ENCOUNTER_K: float = 3.2e-5
 ## Searching inside: infected trapped in the building matter more than the street.
 const INSIDE_EXPOSURE_BASE: float = 0.6
 const INSIDE_EXPOSURE_PER_DANGER: float = 1.5
@@ -80,7 +79,6 @@ const STRESS_BY_OUTCOME: Dictionary = {&"avoided": 2.0, &"fought_off": 5.0, &"in
 @warning_ignore("integer_division")
 func setup() -> void:
 	listen(&"noise", _on_noise)
-	listen(&"light", _on_light)
 	listen(&"survivor_turned", _on_survivor_turned)
 	var zones: Dictionary = Data.table("town_layout")["zones"]
 	var start: Array = zones["start_infected"]
@@ -185,6 +183,30 @@ func _hourly() -> void:
 			next[water_zone] += moving
 	for i: int in counts.size():
 		WorldState.zones[i]["infected"] = maxf(0.0, next[i])
+	_drift_to_attention()
+
+
+## Every hour, infected in zones near a site with attention edge toward it.
+func _drift_to_attention() -> void:
+	var config: Dictionary = Data.table("attention")
+	var radius: float = float(config["drift_radius_m"])
+	var act: float = activity()
+	for site: String in WorldState.attention:
+		var building: Dictionary = WorldState.building(site)
+		if building.is_empty():
+			continue
+		var pos: Vector2 = Geo.building_center_m(building)
+		var target: int = Geo.zone_index_at(pos)
+		var share: float = float(config["drift_share_per_hour_per_100"]) * float(WorldState.attention[site]) / 100.0 * act
+		var moved: float = 0.0
+		for i: int in WorldState.zones.size():
+			if i == target or pos.distance_to(Geo.zone_center_m(i)) > radius:
+				continue
+			var zone: Dictionary = WorldState.zones[i]
+			var count: float = float(zone["infected"]) * minf(share, 0.5)
+			zone["infected"] = float(zone["infected"]) - count
+			moved += count
+		WorldState.zones[target]["infected"] = float(WorldState.zones[target]["infected"]) + moved
 
 
 @warning_ignore("integer_division")
@@ -198,14 +220,14 @@ static func _neighbours(index: int) -> Array[int]:
 	return out
 
 
-## Infected within earshot move toward the noise, more the farther the sound reaches into their zone.
+## Infected within earshot of a one-off noise move toward it, more the farther the
+## sound reaches into their zone. Continuous noise and light from a site the group
+## uses work through its attention instead (_drift_to_attention).
 func _on_noise(payload: Dictionary) -> void:
+	if payload.get("continuous", false):
+		return
 	_pull(Vector2(float(payload["x_m"]), float(payload["y_m"])), float(payload["radius_m"]), NOISE_PULL_MAX,
 		StringName(payload.get("source", &"noise")))
-
-
-func _on_light(payload: Dictionary) -> void:
-	_pull(Vector2(float(payload["x_m"]), float(payload["y_m"])), float(payload["radius_m"]), LIGHT_PULL_MAX, &"light")
 
 
 func _pull(pos: Vector2, radius: float, pull_max: float, source: StringName) -> void:
@@ -297,7 +319,7 @@ func _resolve(s: Dictionary, zone: Dictionary, met: int) -> void:
 	killed_infected = mini(killed_infected, roundi(float(zone["infected"])))
 	zone["infected"] = maxf(0.0, float(zone["infected"]) - killed_infected)
 	WorldState.stats["infected_killed"] = int(WorldState.stats["infected_killed"]) + killed_infected
-	s["stress"] = clampf(float(s["stress"]) + float(STRESS_BY_OUTCOME[outcome]) * Difficulty.mult("stress"), 0.0, 100.0)
+	Traits.add_stress(s, float(STRESS_BY_OUTCOME[outcome]), "fights")
 	match outcome:
 		&"injured":
 			s["injuries"].append(_random_wound())

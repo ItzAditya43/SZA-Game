@@ -1,8 +1,18 @@
 {
   "days_to_survive": 30,
-  "start_date": { "month": 4, "day": 15 },
+  "start_date": {
+    "month": 4,
+    "day": 15
+  },
   "start_building": "house_04",
-
+  "default_roster": [
+    "meera",
+    "arjun",
+    "farhan",
+    "lakshmi",
+    "ravi"
+  ],
+  "roster_size": 5,
   "start_stores": {
     "water_bottled": 46,
     "packaged_food": 12000,
@@ -14,23 +24,26 @@
     "bandages": 4,
     "painkillers": 2,
     "ors": 2,
-    "materials": 6
+    "materials": 6,
+    "cigarettes": 5
   },
-
   "climate": {
     "comment": "Mid-April to mid-May on the South Indian plains. Daily min/max ramp linearly over the run; the warmest hour is ~14:30, the coolest ~05:30.",
-    "min_c_start": 26.0, "min_c_end": 28.0,
-    "max_c_start": 37.0, "max_c_end": 40.0,
+    "min_c_start": 26.0,
+    "min_c_end": 28.0,
+    "max_c_start": 37.0,
+    "max_c_end": 40.0,
     "daily_jitter_c": 1.5,
-    "coolest_hour": 5.5, "warmest_hour": 14.5
+    "coolest_hour": 5.5,
+    "warmest_hour": 14.5
   },
-
   "infrastructure": {
     "phones_fail_day": 2,
-    "power_fail_day_min": 3, "power_fail_day_max": 6,
-    "mains_fail_day_min": 7, "mains_fail_day_max": 12
+    "power_fail_day_min": 3,
+    "power_fail_day_max": 6,
+    "mains_fail_day_min": 7,
+    "mains_fail_day_max": 12
   },
-
   "infected": {
     "start_total": 6000,
     "growth_per_day": 1200,

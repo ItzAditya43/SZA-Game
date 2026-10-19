@@ -19,9 +19,13 @@
   { "id": "fuel",            "name": "Petrol/diesel",      "category": "fuel",     "unit": "L",     "kg_per_unit": 0.75 },
   { "id": "cooking_gas",     "name": "Cooking gas (LPG)",  "category": "fuel",     "unit": "kg",    "kg_per_unit": 1.0 },
 
+  { "id": "cigarettes",      "name": "Cigarettes (packs)", "category": "comfort",  "unit": "count", "kg_per_unit": 0.03 },
+
   { "id": "materials",       "name": "Materials",          "category": "materials","unit": "units", "kg_per_unit": 5.0 },
 
   { "id": "generator",       "name": "Generator",          "category": "gear",     "unit": "count", "kg_per_unit": 25.0 },
+  { "id": "handcart",        "name": "Handcarts",          "category": "gear",     "unit": "count", "kg_per_unit": 30.0 },
+  { "id": "vehicle",         "name": "Vehicle (keys, fuel tank)", "category": "vehicle", "unit": "count", "kg_per_unit": 0.0 },
   { "id": "water_drum",      "name": "Water drums (200 L)","category": "gear",     "unit": "count", "kg_per_unit": 8.0 },
   { "id": "machete",         "name": "Machetes",           "category": "weapon",   "unit": "count", "kg_per_unit": 1.0 },
   { "id": "rifle",           "name": "Rifles",             "category": "weapon",   "unit": "count", "kg_per_unit": 4.0 },

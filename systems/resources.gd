@@ -7,6 +7,7 @@ extends "res://core/sim_system.gd"
 const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Difficulty := preload("res://core/difficulty.gd")
+const Traits := preload("res://core/traits.gd")
 
 const TICK_DAYS: float = 1.0 / 144.0
 
@@ -196,7 +197,7 @@ func _cook() -> void:
 		if s["location"] != &"base" or s["job_now"] != &"cook" or s["activity"] != &"light_work":
 			continue
 		var target: float = FOOD_RATIONS[&"full"] * group_size * COOKED_STOCK_DAYS - Stores.total(WorldState.stores, "cooked_meal")
-		var kcal: float = minf(COOK_KCAL_PER_HOUR * Body.work_speed(s) / 6.0, target)
+		var kcal: float = minf(COOK_KCAL_PER_HOUR * Body.work_speed(s) * Traits.mult(s, "cooking_speed_mult") / 6.0, target)
 		var staples: float = 0.0
 		for item: String in STAPLES:
 			staples += Stores.total(WorldState.stores, item)
@@ -208,7 +209,8 @@ func _cook() -> void:
 		for item: String in ["water_boiled", "water_bottled"]:
 			water += Stores.take(WorldState.stores, item, water_needed - water)
 		kcal *= water / water_needed
-		var fuel_share: float = _burn(kcal / 1000.0 * COOK_GAS_KG_PER_1000_KCAL, kcal / 1000.0 * COOK_WOOD_PER_1000_KCAL)
+		var frugal: float = Traits.mult(s, "cooking_fuel_mult")
+		var fuel_share: float = _burn(kcal / 1000.0 * COOK_GAS_KG_PER_1000_KCAL * frugal, kcal / 1000.0 * COOK_WOOD_PER_1000_KCAL * frugal)
 		kcal *= fuel_share
 		if kcal <= 1.0:
 			if int(s.get("cook_warned_shift", -1)) != WorldState.tick / 72:

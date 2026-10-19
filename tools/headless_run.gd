@@ -32,7 +32,7 @@ func run() -> int:
 	var strategy: String = SimRun.string_arg("strategy", "")
 	_verbose = SimRun.int_arg("verbose", 0) == 1
 	var difficulty: String = SimRun.string_arg("difficulty", Difficulty.DEFAULT_ID)
-	SimRun.start(run_seed, difficulty)
+	SimRun.start(run_seed, difficulty, SimRun.roster_arg())
 	if strategy != "":
 		_player = AutoPlayer.new(StringName(strategy))
 		_player.begin()
@@ -75,7 +75,7 @@ func _batch_one(games: int, first_seed: int, difficulty: String, strategy: Strin
 	var breaches: int = 0
 	var first_losses: Array[float] = []
 	for game: int in games:
-		SimRun.start(first_seed + game, difficulty)
+		SimRun.start(first_seed + game, difficulty, SimRun.roster_arg())
 		_player = AutoPlayer.new(strategy)
 		_player.begin()
 		var end_tick: int = int(Data.table("scenario")["days_to_survive"]) * WorldState.TICKS_PER_DAY

@@ -16,7 +16,16 @@ func tick() -> void:
 	pass
 
 
-## Calls `handler(payload)` whenever `event_name` is emitted on the bus.
+## Called when the run ends or a new one starts: stop listening to the bus, so a
+## finished run's systems can never act on the next one.
+func shutdown() -> void:
+	if EventBus.event.is_connected(_dispatch):
+		EventBus.event.disconnect(_dispatch)
+	_handlers.clear()
+
+
+## Calls `handler(payload)` whenever `event_name` is emitted on the bus. Pass a
+## method, not an inline lambda: a lambda that uses the system keeps it alive.
 func listen(event_name: StringName, handler: Callable) -> void:
 	if _handlers.is_empty():
 		EventBus.event.connect(_dispatch)

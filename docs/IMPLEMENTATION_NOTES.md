@@ -6,7 +6,7 @@ All of it was built in one pass (milestones 1 to 6 in order). Each milestone is 
 
 ## The milestone checks
 
-Every check runs headless: `bash tools/run_tests.sh` runs all seven suites (128 checks, the six milestones plus difficulty; about 7 minutes, most of it auto-played batches). The suites also cover behaviour the checkboxes imply but don't name.
+Every check runs headless: `bash tools/run_tests.sh` runs all eight suites (156 checks; about 8 minutes, most of it auto-played batches). The suites also cover behaviour the checkboxes imply but don't name.
 
 | Milestone | Check in GAME_DESIGN.md | How it is verified | Result |
 | --- | --- | --- | --- |
@@ -60,6 +60,172 @@ Results of 40 auto-played games per cell:
 | Hard | 25% / 20% | 78% / 60% |
 
 A first try at Hard (×1.3 on everything) was a wall: 0% for balanced, groups collapsing around day 7. Attack chance and attack size both scale, so 1.3 became 1.69. The table above is the second pass.
+
+## Phase 2, prompt 1: Stabilize (branch `feat/stabilize`)
+
+Built from `prompts/phase2/01-stabilize.md`. All 156 checks pass (`bash tools/run_tests.sh`; the new suite is `tests/test_stabilize.gd`, 28 checks).
+
+### Part A: location attention, and making "keep moving" work
+
+**Attention** is a new system, `systems/attention.gd`. Its numbers are in `data/attention.json`.
+- **What builds it.** A site the group lives in accumulates attention from its signals:
+  - voices and foot traffic, latrine and rubbish smell
+  - cooking smoke, and firelight at night
+  - generator noise, and generator light at night
+  - hammering, unburied bodies (for 3 days)
+  - one-off noises reaching it, such as gunshots and forced doors
+- **How it fades.** Half-life is 10 days while people stay and 3 days after they leave. A group arriving at a new site starts it on 25 points: they were seen carrying their loads in.
+- **What it does:**
+  - **Infected drift.** Each hour, infected in zones within 1 km edge toward the site, in proportion to its attention.
+  - **Night attacks.** Their chance scales with `0.4 + attention / 120`. An unknown new site sees about a third of the attacks of an old one, and a site that has drawn 120 points sees about 1.4 times the old rate. Attack size depends only on how many infected are in the zone.
+- **What it replaced.** Base "alert" is gone. Continuous noise and light (generator, hammering) now act only through attention. One-off loud noises (gunshots, doors, events) still pull infected from nearby zones instantly, as before.
+- **Where it shows.** The Base tab reads "Attention: low / rising / high (n)", with thresholds at 60 and 150.
+
+**Moving** (`data/mobility.json`):
+- **Carrying:**
+  - on foot, 25 kg per person (×1.3 for a strong back)
+  - a handcart (hardware shops, godowns), 150 kg, at 0.8× speed and 30 m of noise
+  - a found vehicle (petrol pumps, police station), 600 kg at 4× speed, but 300 m of noise, 0.12 L of fuel per km, and someone with the Driver trait
+- **Packing.** Each category gets a share of the load first: 45% food, 30% water, plus medicine, fuel, gear and materials. The rest fills in priority order.
+- **The move itself.** The group walks the route exposed to encounters. On arrival it clears its new building for an hour, exposed like a search to anything trapped inside. Each person gains 6 stress for uprooting.
+- **Moving in.** Whatever is still inside the new base becomes the group's. Before, a base's own contents were unreachable.
+- **Quick barricade.** A new job: 4.8 points an hour from 3 materials, capped at 40% of the building's maximum. That's a quarter of the time and materials of full barricading, for 40% of the protection.
+- **Hidden caches.** What can't be carried is hidden at the old site (1 hour by default; quality 0.3 + 0.3 per hour of hiding, up to 0.9). Each day there's a chance others find it: the building's looted rate × 0.3 × (1 − quality). A survivor sent back there digs it out.
+
+**Rule changes found while tuning:**
+- **Guards only fire when needed.** They open fire only when an attack could break in without the guns. Before, every attack meant gunshots, gunshots meant attention, and attention brought more attacks.
+
+**The bot.** Its "keep moving" strategy now:
+- leaves at dawn once the base panel shows high attention, for a quiet, defensible building it hasn't used in 8 days, within 1.4 km
+- hides the surplus and quick-barricades on arrival
+- looks for handcarts and, if it has a driver, a vehicle
+
+It reads only what the player sees: zone counts on the map, the attention level, its own memory of where it's been.
+
+### Part B: save and load
+
+The code is in `core/save_game.gd`.
+- **Format.** JSON in `user://saves/`:
+  - `save_version` (1), difficulty, seed, roster, day, survivors alive, real-world time
+  - the RNG state, as text
+  - the whole `WorldState` and event log
+- **Encoding.** The world uses a small encoder: dictionaries keep their key order, ints, StringNames and vectors are tagged, and floats are stored as their exact 64-bit pattern.
+  - Key order matters because systems roll dice while looping over dictionaries.
+  - Godot's own JSON writer and its text format both lose float precision or key order, so either would make a reload drift.
+- **Autosave** at every dawn, rotating through 3 slots. Ctrl+S quick-saves, Ctrl+L opens the load list, and Esc opens a pause menu (Resume, Save game, Load…, New run…, Quit).
+- **The start screen** has Continue (latest save) and Load… (day, difficulty, survivors alive, save time).
+- **Determinism check.** A save at day 10, loaded and run to day 20, gives the same state hash as an uninterrupted run, with scripted decisions.
+- **Old or damaged saves** give a clear message, never a crash.
+- **A bug found here.** An inline-function bus listener kept finished runs' systems alive and listening. In batches, old games were still acting on new ones. Systems now disconnect from the bus when a run is reset, and `listen()` documents that it needs a method, not a lambda.
+
+### Part C: survivor pool with traits
+
+- **The pool.** `data/survivors.json` now has 12 people, one for each job in the brief, each with a background, 3 skills and 1–2 traits.
+- **The traits.** `data/traits.json` has 14 traits, each a set of data-driven effects read through `core/traits.gd`:
+  - light sleeper
+  - heat-acclimatised
+  - smoker (cigarettes are now loot, and the group starts with 5 packs)
+  - handles gore
+  - strong back
+  - squeamish
+  - night owl
+  - steady nerves
+  - anxious
+  - knows the town
+  - frugal cook
+  - knows medicines
+  - driver (needed for vehicles)
+  - builder
+
+  Vegetarian and Can't swim from the brief's examples were left out: there's no meat or flooding yet, so they wouldn't change any decision.
+- **Choosing the group.** The start screen picks 5 of the 12, or "Random 5" (seeded), or "Default five" (the original group, used by all tests and balance runs). The headless runner takes `--roster=default|random|id,id,...`.
+- **The stranger at the gate** is now whoever from the pool isn't in the group.
+- **Stress.** Every stress gain now goes through one function, which applies difficulty and personality together.
+
+### Part D: map as data, and export
+
+- **The map.** The town is hand-authored in `data/town_layout.json`: terrain rectangles, the 50 buildings, landmarks and zone settings. The game paints the grid at load, and `tools/make_town.py` and `data/town.json` are gone. That settles the open question: the map is hand-made, as data.
+- **Export presets.** `export_presets.cfg` has presets for Linux and Windows Desktop. They include `data/*.json` and leave out tests, tools, prompts and docs.
+- **Export templates aren't installed on this machine,** so no build was made. The export fails cleanly: "No export template found at ~/.local/share/godot/export_templates/4.7.2.stable/". To install them, open the editor (`godot -e`), then Editor → Manage Export Templates → Download and Install (about 1 GB). Then:
+
+  ```
+  godot --headless --export-release "Linux" build/linux/SurvivalSim.x86_64
+  godot --headless --export-release "Windows Desktop" build/windows/SurvivalSim.exe
+  ```
+
+### Balance: before and after (40 games per cell, default five)
+
+| Difficulty | Strategy | Won before → after | Survivors alive before → after | Median first loss day before → after |
+| --- | --- | --- | --- | --- |
+| Easy | Stay and fortify | 98% → 100% | 81% → 79% | 21.8 → 13.7 |
+| Easy | Police fortress | 95% → 100% | 83% → 91% | 21.3 → none |
+| Easy | Keep moving | 68% → 100% | 45% → 76% | 12.0 → 14.0 |
+| Easy | Hoard water | 98% → 98% | 80% → 73% | 13.2 → 10.4 |
+| Normal | Stay and fortify | 68% → 73% | 48% → 52% | 8.0 → 9.8 |
+| Normal | Police fortress | 95% → 93% | 71% → 75% | 10.4 → 17.8 |
+| Normal | **Keep moving** | **20% → 75%** | 13% → 47% | 10.7 → 10.1 |
+| Normal | Hoard water | 53% → 80% | 37% → 49% | 7.0 → 8.8 |
+| Hard | Stay and fortify | 25% → 35% | 20% → 21% | 7.0 → 7.8 |
+| Hard | Police fortress | 78% → 78% | 60% → 55% | 13.1 → 10.8 |
+| Hard | Keep moving | 0% → 20% | 0% → 12% | 7.8 → 6.8 |
+| Hard | Hoard water | 20% → 35% | 14% → 19% | 6.0 → 9.2 |
+
+A first loss "day none" means the median run lost nobody.
+
+Hoard water now bases at the inland Government school, not St. Mary's. In the heat the infected gather by the canal beside St. Mary's, and with attention driving attacks that site won only 3% on Normal. A player would see the crowd on the map.
+
+**Random 5 roster, Normal:**
+
+| Strategy | Won | Survivors alive |
+| --- | --- | --- |
+| Stay and fortify | 48% | 30% |
+| Police fortress | 95% | 70% |
+| Hoard water | 78% | 48% |
+| Keep moving | 58% | 32% |
+
+Random groups are weaker than the default five, which has a nurse, a fighter and two scavengers, but no combination breaks the game.
+
+**Deaths by cause on Normal (all four strategies, 160 games):**
+
+| Cause | Before | After |
+| --- | --- | --- |
+| Turned | 287 | 235 |
+| Left the group | 87 | 116 |
+| Group scattered | 119 | 44 |
+| Arterial bleed | 7 | 5 |
+| Killed when the base was overrun | 6 | 1 |
+| Blood loss | 2 | 0 |
+| Sepsis | 0 | 0 |
+
+The after figures use hoard water from the inland school.
+
+### Numbers tuned in this prompt, and where they live
+
+| Number | Value | Where |
+| --- | --- | --- |
+| Attention signals | per source | `data/attention.json` |
+| Half-lives | 10 days occupied, 3 days empty | `data/attention.json` |
+| Arrival attention | 25 | `data/attention.json` |
+| Attack scaling | 0.4 + attention / 120 | `data/attention.json` |
+| Infected drift | 0.0004 per hour per 100 attention | `data/attention.json` |
+| Carry, handcart, vehicle | see Part A | `data/mobility.json` |
+| Quick barricade, caches | see Part A | `data/mobility.json` |
+| Stress per move | 6 | `data/mobility.json` |
+| Encounter rate | 2.4e-5 → 3.2e-5 | `systems/infected.gd` `ENCOUNTER_K` |
+| Packing shares | see Part A | `systems/base.gd` `MOVE_SHARE` |
+| Stress from a repelled attack | scaled by how close it came | `systems/base.gd` |
+| Starting cigarettes | 5 | `data/scenario.json` |
+
+The bot's keep-moving rules are constants at the top of `tools/auto_player.gd`.
+
+### Not working, not verified, or uncertain
+
+- **No exported build.** The export templates aren't installed.
+- **The new menus aren't checked by hand.** The start screen, load list and pause menu were checked by screenshot and headless tests, not clicked through.
+- **Keep moving sits at the top of its target** (75%). It's sensitive to the bot's moving rules, which shows how much the outcome depends on judgement.
+- **Hard is very hard for mobile groups** (20%), because every move starts with weak quick barricades.
+- **The default five's traits made the group stronger,** so the Easy/Normal/Hard multipliers were tuned before traits existed and would deserve a second look.
+- **The brief's balance-report rule asks for 1280×720 and 1920×1080 screenshots.** This prompt's screenshots were taken at the game's 1600×900 base size, which scales to any window.
 
 ## Spec ambiguities and how they were resolved
 

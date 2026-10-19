@@ -75,7 +75,10 @@ func _check_plenty_of_water() -> void:
 		zone["infected"] = 0.0
 	Stores.add(WorldState.stores, "water_bottled", 500.0)
 	Stores.add(WorldState.stores, "packaged_food", 100000.0)
-	TickLoop.run_headless(6 * WorldState.TICKS_PER_DAY)
+	for day: int in 6:
+		for zone: Dictionary in WorldState.zones:
+			zone["infected"] = 0.0
+		TickLoop.run_headless(WorldState.TICKS_PER_DAY)
 	var fine: bool = WorldState.survivors.all(func(s: Dictionary) -> bool: return s["status"] == &"ok" and float(s["health"]) > 90.0)
 	expect("with enough water and food, everyone is alive and healthy after 6 days", fine,
 		str(WorldState.survivors.map(func(s: Dictionary) -> String: return "%s %s %.0f" % [s["name"], s["status"], float(s["health"])])))

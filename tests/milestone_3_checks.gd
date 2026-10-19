@@ -106,6 +106,7 @@ func _check_scavenge_trip_near() -> void:
 	start(14)
 	var farhan: Dictionary = WorldState.survivor("farhan")
 	var shop: Dictionary = WorldState.building("kirana_06")
+	shop["locked"] = true
 	var shop_food: float = Stores.food_kcal(shop["loot"])
 	var home_food: float = Stores.food_kcal(WorldState.stores)
 	TickLoop.run_headless(ticks_for_hours(12.0))

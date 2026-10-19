@@ -30,3 +30,12 @@ func randi_range(a: int, b: int) -> int:
 ## True with probability p. p <= 0 is never true, p >= 1 is always true.
 func chance(p: float) -> bool:
 	return _rng.randf() < p
+
+
+## The generator's exact position in its sequence, for saving and loading.
+func get_state() -> int:
+	return _rng.state
+
+
+func set_state(state: int) -> void:
+	_rng.state = state

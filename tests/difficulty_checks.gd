@@ -77,7 +77,7 @@ func _check_start_screen() -> void:
 	if not screen.is_node_ready():
 		screen._ready()
 	var chosen: Array = []
-	screen.start_requested.connect(func(level: String, run_seed: int) -> void: chosen.append([level, run_seed]))
+	screen.start_requested.connect(func(level: String, run_seed: int, roster: Array) -> void: chosen.append([level, run_seed, roster]))
 	for button: Button in screen.find_children("*", "Button", true, false):
 		if button.text == "Hard":
 			button.pressed.emit()
@@ -85,7 +85,9 @@ func _check_start_screen() -> void:
 	for button: Button in screen.find_children("*", "Button", true, false):
 		if button.text == "Start":
 			button.pressed.emit()
-	expect("the start screen starts a Hard run with the seed typed in", chosen == [["hard", 77]], str(chosen))
+	expect("the start screen starts a Hard run with the seed typed in and the default five",
+		chosen.size() == 1 and chosen[0][0] == "hard" and chosen[0][1] == 77
+		and chosen[0][2].size() == 5 and Data.table("scenario")["default_roster"].all(func(id: String) -> bool: return chosen[0][2].has(id)), str(chosen))
 	screen.queue_free()
 
 

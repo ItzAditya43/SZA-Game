@@ -18,16 +18,20 @@ const SYSTEM_SCRIPTS: Array[Script] = [
 	preload("res://systems/infected.gd"),
 	preload("res://systems/survivors.gd"),
 	preload("res://systems/resources.gd"),
+	preload("res://systems/attention.gd"),
 	preload("res://systems/events.gd"),
 	preload("res://systems/outcome.gd"),
 ]
 
 
-static func start(run_seed: int, difficulty_id: String = Difficulty.DEFAULT_ID) -> void:
+## roster: survivor ids from the pool, [] for the scenario's default five, or
+## ["random"] for a seeded random pick.
+static func start(run_seed: int, difficulty_id: String = Difficulty.DEFAULT_ID, roster: Array = []) -> void:
 	TickLoop.reset()
 	Rng.set_seed(run_seed)
 	WorldState.reset(run_seed)
 	WorldState.difficulty = Difficulty.preset(difficulty_id)
+	WorldState.flags["roster"] = pick_roster(roster)
 	EventBus.clear_log()
 	var systems: Array[SimSystem] = []
 	for script: Script in SYSTEM_SCRIPTS:
@@ -38,6 +42,25 @@ static func start(run_seed: int, difficulty_id: String = Difficulty.DEFAULT_ID) 
 		system.setup()
 	EventBus.emit_event(&"run_started", {"seed": run_seed, "difficulty": WorldState.difficulty["id"],
 		"text": "Day 0 of the outbreak. %s, seed %d." % [WorldState.difficulty["name"], run_seed]})
+
+
+static func pick_roster(roster: Array) -> Array:
+	var scenario: Dictionary = Data.table("scenario")
+	if roster.is_empty() or roster == ["default"]:
+		return Array(scenario["default_roster"])
+	if roster == ["random"]:
+		var ids: Array = Data.table("survivors").map(func(row: Dictionary) -> String: return row["id"])
+		var picked: Array = []
+		for i: int in int(scenario["roster_size"]):
+			picked.append(ids.pop_at(Rng.randi_range(0, ids.size() - 1)))
+		return picked
+	return roster
+
+
+## A roster from `--roster=default|random|id,id,...` on the command line.
+static func roster_arg() -> Array:
+	var text: String = string_arg("roster", "default")
+	return Array(text.split(",", false))
 
 
 ## Reads `--name=value` from the user arguments after `--` on the command line.

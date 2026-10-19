@@ -7,7 +7,7 @@ const Stores := preload("res://core/stores.gd")
 
 const POLICY_CHOICES: Array[Dictionary] = [
 	{"key": &"food_ration", "label": "Food ration", "values": [&"full", &"reduced", &"half", &"minimal"],
-		"names": ["Full (2,500 kcal)", "Reduced (1,800)", "Half (1,200)", "Minimal (600)"]},
+		"names": ["Full (up to 3,000 kcal)", "Reduced (2,000)", "Half (1,500)", "Minimal (800)"]},
 	{"key": &"water_ration", "label": "Water ration", "values": [&"as_needed", &"4L", &"3L", &"2L", &"1L"],
 		"names": ["As needed", "4 L a day", "3 L a day", "2 L a day", "1 L a day"]},
 	{"key": &"boil_water", "label": "Boil water", "values": [true, false], "names": ["Boil before drinking", "Drink it as it is"]},
@@ -15,7 +15,7 @@ const POLICY_CHOICES: Array[Dictionary] = [
 		"names": ["Off", "Evenings 18-22", "All night"]},
 	{"key": &"use_guns", "label": "Firearms", "values": [false, true], "names": ["Hold fire (quiet)", "Use guns (600 m gunshot)"]},
 ]
-const STORE_GROUPS: Array[String] = ["water", "food", "medicine", "fuel", "materials", "gear", "weapon"]
+const STORE_GROUPS: Array[String] = ["water", "food", "medicine", "comfort", "fuel", "materials", "gear", "vehicle", "weapon"]
 
 var _text: RichTextLabel
 var _pickers: Dictionary = {}  # policy key -> OptionButton
@@ -79,9 +79,12 @@ static func describe() -> String:
 		roundi(float(base.get("defense", 0.0))), roundi(float(parts.get("building", 0.0))), roundi(float(building["barricade"])),
 		int(type["max_barricade"]), roundi(float(parts.get("guards", 0.0))), roundi(float(parts.get("weapons", 0.0))),
 		roundi(float(parts.get("others", 0.0)))])
-	var alert: float = float(base.get("alert", 0.0))
-	lines.append("Neighbourhood alert: %s (%.2f) · Night attacks so far: %d (%d broke in)" % [
-		"calm" if alert < 0.2 else ("uneasy" if alert < 0.6 else "stirred up"), alert, int(base.get("attacks", 0)), int(base.get("breaches", 0))])
+	var level: StringName = base.get("attention_level", &"low")
+	var level_text: Dictionary = {&"low": "low", &"rising": "[color=#f2cc60]rising[/color]", &"high": "[color=#ff7b72]high — infected are being drawn here[/color]"}
+	lines.append("Attention: %s (%d) · Night attacks so far: %d (%d broke in)" % [level_text[level],
+		roundi(float(base.get("attention", 0.0))), int(base.get("attacks", 0)), int(base.get("breaches", 0))])
+	for cache: Dictionary in WorldState.caches:
+		lines.append("Cache hidden at %s (%d%% well hidden)" % [WorldState.building(String(cache["building"]))["name"], roundi(float(cache["quality"]) * 100.0)])
 	var infra: Dictionary = WorldState.infrastructure
 	lines.append("Power: %s · Taps: %s · Generator: %s" % [
 		"grid" if infra.get("power_on", false) else "none", "running" if infra.get("mains_on", false) else "dry",

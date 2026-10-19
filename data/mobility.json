@@ -1,0 +1,10 @@
+{
+  "comment": "Moving the group: what it can carry and how, quick barricades at a new site, and caches left behind.",
+  "on_foot_kg": 25.0,
+  "handcart": { "carry_kg": 150.0, "speed_mult": 0.8, "noise_m": 30.0 },
+  "vehicle": { "carry_kg": 600.0, "speed_mult": 4.0, "noise_m": 300.0, "fuel_l_per_km": 0.12 },
+  "comment_stress": "Uprooting is hard on people: a new, unfamiliar place, the routine broken, the first night somewhere strange.",
+  "stress_per_move": 6.0,
+  "quick_barricade": { "materials_per_hour": 3.0, "points_per_material": 1.6, "cap_share": 0.4 },
+  "cache": { "hide_hours": 1.0, "quality_base": 0.3, "quality_per_hour": 0.3, "quality_max": 0.9, "find_scale": 0.3 }
+}

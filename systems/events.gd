@@ -8,6 +8,7 @@ const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
 const Decisions := preload("res://core/decisions.gd")
 const Difficulty := preload("res://core/difficulty.gd")
+const Traits := preload("res://core/traits.gd")
 
 ## Events without an hour roll at this hour.
 const DEFAULT_HOUR: int = 10
@@ -47,15 +48,30 @@ func tick() -> void:
 
 
 func _fire(event: Dictionary) -> void:
+	var fill: Dictionary = {}
+	if event.get("stranger_from_pool", false):
+		fill = _pick_stranger()
+		if fill.is_empty():
+			return
 	WorldState.flags["events_fired"][event["id"]] = WorldState.tick
-	EventBus.emit_event(&"story_event", {"id": event["id"], "title": event["title"], "text": event["text"]})
-	_apply(event.get("effects", []))
+	EventBus.emit_event(&"story_event", {"id": event["id"], "title": event["title"], "text": String(event["text"]).format(fill)})
+	_apply(event.get("effects", []), fill)
 	if event.has("decision"):
 		var decision: Dictionary = event["decision"]
 		var options: Array = []
 		for option: Dictionary in decision["options"]:
 			options.append(Decisions.option(StringName(option["id"]), String(option["label"])))
-		Decisions.create(&"event", String(decision["text"]), options, {"event": event["id"]})
+		Decisions.create(&"event", String(decision["text"]).format(fill), options, {"event": event["id"], "fill": fill})
+
+
+## Someone from the survivor pool who isn't in the group (or gone from it).
+func _pick_stranger() -> Dictionary:
+	var unused: Array = Data.table("survivors").filter(func(row: Dictionary) -> bool:
+		return WorldState.survivor(String(row["id"])).is_empty())
+	if unused.is_empty():
+		return {}
+	var row: Dictionary = unused[Rng.randi_range(0, unused.size() - 1)]
+	return {"id": row["id"], "name": row["name"], "age": int(row["age"]), "profession": String(row["profession"]).to_lower()}
 
 
 func _on_decision(payload: Dictionary) -> void:
@@ -68,7 +84,7 @@ func _on_decision(payload: Dictionary) -> void:
 			continue
 		for option: Dictionary in event["decision"]["options"]:
 			if StringName(option["id"]) == StringName(payload["option"]):
-				_apply(option.get("effects", []))
+				_apply(option.get("effects", []), decision.get("fill", {}))
 
 
 func _conditions_met(conditions: Array) -> bool:
@@ -89,7 +105,8 @@ func _conditions_met(conditions: Array) -> bool:
 	return true
 
 
-func _apply(effects: Array) -> void:
+## `fill` replaces {placeholders} in text-valued fields (the stranger's id).
+func _apply(effects: Array, fill: Dictionary = {}) -> void:
 	for effect: Dictionary in effects:
 		match String(effect["type"]):
 			"scale_loot":
@@ -122,9 +139,9 @@ func _apply(effects: Array) -> void:
 				zone["infected"] = float(zone["infected"]) * (1.0 - float(effect["share"]))
 			"group_stress":
 				for s: Dictionary in WorldState.group():
-					s["stress"] = clampf(float(s["stress"]) + float(effect["value"]) * Difficulty.mult("stress"), 0.0, 100.0)
+					Traits.add_stress(s, float(effect["value"]))
 			"add_survivor":
-				EventBus.emit_event(&"command_add_survivor", {"id": effect["id"],
+				EventBus.emit_event(&"command_add_survivor", {"id": String(effect["id"]).format(fill),
 					"bitten": Rng.chance(float(effect.get("bitten_chance", 0.0)))})
 			"heat_wave":
 				var climate: Dictionary = WorldState.climate

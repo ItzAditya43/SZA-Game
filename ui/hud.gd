@@ -12,6 +12,7 @@ const DecisionPanel := preload("res://ui/decision_panel.gd")
 const BasePanel := preload("res://ui/base_panel.gd")
 const EndScreen := preload("res://ui/end_screen.gd")
 const StartScreen := preload("res://ui/start_screen.gd")
+const SaveMenu := preload("res://ui/save_menu.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
 const LOG_HEIGHT: float = 140.0
@@ -24,6 +25,7 @@ var building_panel: BuildingPanel
 var decision_panel: DecisionPanel
 var end_screen: EndScreen
 var start_screen: StartScreen
+var save_menu: SaveMenu
 
 
 func _ready() -> void:
@@ -96,11 +98,21 @@ func _ready() -> void:
 	start_screen.visible = false
 	start_screen.add_to_group(&"modal")
 	add_child(start_screen)
+	save_menu = SaveMenu.new()
+	save_menu.add_to_group(&"modal")
+	add_child(save_menu)
 	# Above everything else on screen, whatever order the panels redraw in.
-	for layer: Control in [backdrop, end_screen, start_screen]:
+	for layer: Control in [backdrop, end_screen, start_screen, save_menu]:
 		layer.z_index = 10
-	for modal: Control in [end_screen, start_screen]:
-		modal.visibility_changed.connect(func() -> void: backdrop.visible = end_screen.visible or start_screen.visible)
+	save_menu.z_index = 11
+	for modal: Control in [end_screen, start_screen, save_menu]:
+		modal.visibility_changed.connect(func() -> void:
+			backdrop.visible = end_screen.visible or start_screen.visible or save_menu.visible)
+
+
+## True while the start screen, end screen or a menu is open.
+func modal_open() -> bool:
+	return end_screen.visible or start_screen.visible or save_menu.visible
 
 
 func _add_map() -> void:

@@ -28,6 +28,10 @@ var town: Dictionary = {}
 var zones: Array = []
 ## The group's base: building, barricades, alert level (systems/base.gd).
 var base: Dictionary = {}
+## Attention per site the group has used: building id -> points (systems/attention.gd).
+var attention: Dictionary = {}
+## Supplies the group has hidden: [{"id", "building", "items", "quality", "tick"}].
+var caches: Array = []
 ## Group stores: item id -> Array of lots {"qty": float, "age_days": float}. See core/stores.gd.
 var stores: Dictionary = {}
 ## Air temperature and today's range (systems/time.gd).
@@ -61,6 +65,8 @@ func reset(new_seed: int) -> void:
 	zones = []
 	base = {}
 	stores = {}
+	attention = {}
+	caches = []
 	climate = {}
 	infrastructure = {}
 	policies = {}
@@ -71,6 +77,27 @@ func reset(new_seed: int) -> void:
 	next_id = 1
 	factions = []
 	region = {}
+
+
+## Every field that makes up the world, for saving. Keep in step with reset().
+const SAVED_FIELDS: Array[String] = [
+	"run_seed", "tick", "survivors", "buildings", "town", "zones", "base", "stores", "attention", "caches",
+	"climate", "infrastructure", "policies", "pending_decisions", "flags", "stats", "outcome", "next_id",
+	"difficulty", "factions", "region",
+]
+
+
+func to_dict() -> Dictionary:
+	var out: Dictionary = {}
+	for field: String in SAVED_FIELDS:
+		out[field] = get(field)
+	return out.duplicate(true)
+
+
+func from_dict(saved: Dictionary) -> void:
+	for field: String in SAVED_FIELDS:
+		if saved.has(field):
+			set(field, saved[field].duplicate(true) if saved[field] is Dictionary or saved[field] is Array else saved[field])
 
 
 ## A fresh id for decisions and other run-scoped records.

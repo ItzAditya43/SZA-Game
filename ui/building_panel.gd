@@ -37,7 +37,7 @@ func _ready() -> void:
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
-	if event_name in [&"tick", &"run_started", &"base_moved", &"scavenge_returned", &"command_set_job"]:
+	if event_name in [&"tick", &"run_started", &"game_loaded", &"base_moved", &"scavenge_returned", &"command_set_job"]:
 		refresh()
 
 

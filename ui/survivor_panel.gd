@@ -5,7 +5,7 @@ extends ScrollContainer
 const Body := preload("res://core/body.gd")
 const UiState := preload("res://ui/ui_state.gd")
 
-const JOBS: Array[StringName] = [&"rest", &"scavenge", &"guard", &"fortify", &"collect_water", &"cook", &"treat"]
+const JOBS: Array[StringName] = [&"rest", &"scavenge", &"guard", &"fortify", &"quick_fortify", &"collect_water", &"cook", &"treat"]
 const ACTIVITY_TEXT: Dictionary = {
 	&"sleeping": "asleep", &"resting": "resting", &"idle": "idle", &"light_work": "working",
 	&"heavy_work": "working hard", &"guarding": "on guard", &"travelling": "travelling",
@@ -31,7 +31,7 @@ func _ready() -> void:
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
-	if event_name in [&"tick", &"run_started", &"survivor_joined", &"survivor_died", &"survivor_turned",
+	if event_name in [&"tick", &"run_started", &"game_loaded", &"survivor_joined", &"survivor_died", &"survivor_turned",
 			&"survivor_left", &"survivor_exiled", &"decision_made", &"command_set_job"]:
 		_refresh()
 
@@ -168,7 +168,8 @@ static func _trip_text(s: Dictionary) -> String:
 	var trip: Dictionary = s["trip"]
 	if trip.is_empty():
 		return "away"
-	var legs: Dictionary = {&"out": "heading to", &"search": "searching", &"back": "returning from", &"fill": "ferrying water at"}
+	var legs: Dictionary = {&"out": "heading to", &"search": "searching", &"back": "returning from", &"fill": "ferrying water at",
+		&"prepare": "hiding supplies before leaving for", &"clear": "clearing their new base,"}
 	return "%s %s" % [legs.get(trip.get("leg", &""), "away at"), trip.get("place", "town")]
 
 

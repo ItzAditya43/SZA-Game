@@ -6,16 +6,23 @@ extends RefCounted
 ##   balanced     stay in the start house, fortify it, scavenge by need
 ##   fortress     move into the police station, fortify, two guards, guns
 ##   hoard_water  move into a school with a big tank, stockpile water first
-##   keep_moving  never dig in: move every few days to a fresh, quiet building
+##   keep_moving  never dig in: when the base draws attention, move at dawn to a
+##                quiet, unused building, cache the surplus, quick-barricade
 
 const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
 const Jobs := preload("res://systems/jobs.gd")
+const Traits := preload("res://core/traits.gd")
 
 const STRATEGIES: Array[StringName] = [&"balanced", &"fortress", &"hoard_water", &"keep_moving"]
-const STRATEGY_BASE: Dictionary = {&"fortress": "police_station_01", &"hoard_water": "school_02"}
-const KEEP_MOVING_EVERY_DAYS: int = 4
+const STRATEGY_BASE: Dictionary = {&"fortress": "police_station_01", &"hoard_water": "school_01"}
+## Keep moving: leave when attention is high, or rising after this many days.
+const KEEP_MOVING_MIN_DAYS: int = 2
+const KEEP_MOVING_RISING_DAYS: int = 99
+## Don't move back into a site used this recently (the player remembers where they were).
+const SITE_MEMORY_DAYS: int = 8
+const MAX_MOVE_M: float = 1400.0
 ## Plan the coming shift ten minutes before it starts.
 const PLAN_DAY_MINUTE: int = 5 * 60 + 50
 const PLAN_NIGHT_MINUTE: int = 17 * 60 + 50
@@ -26,11 +33,12 @@ const VALUE_PER_KG: Dictionary = {
 	"antibiotics": 400.0, "tourniquet": 60.0, "ors": 40.0, "bandages": 40.0, "painkillers": 20.0,
 	"ammo": 30.0, "rifle": 6.0, "machete": 4.0, "water_bottled": 2.0, "packaged_food": 2.5,
 	"rice": 1.5, "dal": 1.5, "atta": 1.2, "fresh_produce": 0.3, "fuel": 0.8, "cooking_gas": 2.0,
-	"materials": 1.0, "water_drum": 8.0, "generator": 1.5,
+	"materials": 1.0, "water_drum": 8.0, "generator": 1.5, "handcart": 2.0, "vehicle": 3.0, "cigarettes": 20.0,
 }
 
 var strategy: StringName
 var _last_move_day: int = 0
+var _used_sites: Dictionary = {}  # building id -> last day used
 var _last_night_guards: Array = []
 
 
@@ -97,21 +105,38 @@ func _rations() -> void:
 		EventBus.emit_event(&"command_set_policy", {"key": &"food_ration", "value": ration})
 
 
+## Keep moving: leave at dawn once the base is drawing attention (the level the
+## base panel shows), for a quiet, defensible building not used recently.
 func _maybe_move() -> void:
-	if strategy != &"keep_moving" or WorldState.day() - _last_move_day < KEEP_MOVING_EVERY_DAYS:
+	_used_sites[WorldState.base["building"]] = WorldState.day()
+	if strategy != &"keep_moving":
 		return
-	_last_move_day = WorldState.day()
+	var stayed: int = WorldState.day() - _last_move_day
+	var level: StringName = WorldState.base.get("attention_level", &"low")
+	if stayed < KEEP_MOVING_MIN_DAYS or not (level == &"high" or level == &"rising" and stayed >= KEEP_MOVING_RISING_DAYS):
+		return
+	if WorldState.group().any(func(s: Dictionary) -> bool: return s["location"] != &"base"):
+		return
+	var home: Vector2 = Geo.base_center_m()
 	var best: Dictionary = {}
 	var best_score: float = 0.0
 	for b: Dictionary in WorldState.buildings:
-		if b["id"] == WorldState.base["building"] or b["stripped"] or float(b["danger"]) > 0.5:
+		if b["id"] == WorldState.base["building"] or float(b["danger"]) > 0.5:
 			continue
+		if WorldState.day() - int(_used_sites.get(b["id"], -100)) < SITE_MEMORY_DAYS:
+			continue
+		var distance: float = Geo.street_distance_m(home, Geo.building_center_m(b))
+		if distance > MAX_MOVE_M:
+			continue
+		var type: Dictionary = Data.entry("buildings", String(b["type"]))
 		var zone: float = float(WorldState.zones[Geo.zone_index_at(Geo.building_center_m(b))]["infected"])
-		var score: float = _loot_value(b) / (1.0 + zone / 300.0)
+		var score: float = (20.0 + float(type["base_defense"]) + 0.5 * float(type["max_barricade"]) + _loot_value(b) * 0.2
+			+ minf(float(b["tank_l"]), 2000.0) / 100.0) / (1.0 + zone / 300.0) / (1.0 + distance / 1000.0)
 		if score > best_score:
 			best_score = score
 			best = b
 	if not best.is_empty():
+		_last_move_day = WorldState.day()
 		EventBus.emit_event(&"command_move_base", {"building": best["id"]})
 
 
@@ -145,8 +170,9 @@ func _plan_shift(shift: StringName) -> void:
 	for i: int in water_jobs:
 		if _needs_water():
 			_assign_lowest(pool, jobs, &"collect_water", "scavenging")
-	if strategy != &"keep_moving" and _can_fortify():
-		_assign_lowest(pool, jobs, &"fortify", "scavenging")
+	if _can_fortify():
+		var quick: bool = strategy == &"keep_moving"
+		_assign_lowest(pool, jobs, &"quick_fortify" if quick else &"fortify", "scavenging")
 	pool.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return Body.skill(a, "scavenging") > Body.skill(b, "scavenging"))
 	var taken: Array = []
 	for s: Dictionary in pool.slice(0, 2):
@@ -217,6 +243,8 @@ func _needs_water() -> bool:
 func _can_fortify() -> bool:
 	var base: Dictionary = WorldState.building(String(WorldState.base["building"]))
 	var cap: float = float(Data.entry("buildings", String(base["type"]))["max_barricade"])
+	if strategy == &"keep_moving":
+		cap *= float(Data.table("mobility")["quick_barricade"]["cap_share"])
 	return Stores.total(WorldState.stores, "materials") >= 3.0 and float(base["barricade"]) < cap - 1.0
 
 
@@ -273,7 +301,15 @@ func _need(item: String) -> float:
 		"gear":
 			if item == "water_drum":
 				return 1.5 if Stores.total(stores, "water_drum") < 4.0 else 0.0
+			if item == "handcart":
+				return (2.0 if strategy == &"keep_moving" else 0.2) if Stores.total(stores, "handcart") < 2.0 else 0.0
 			return 0.5 if Stores.total(stores, item) < 1.0 else 0.0
+		"vehicle":
+			var driver: bool = WorldState.group().any(func(s: Dictionary) -> bool: return Traits.has(s, "can_drive"))
+			return 2.0 if driver and strategy == &"keep_moving" and Stores.total(stores, "vehicle") < 1.0 else 0.0
+		"comfort":
+			var smokers: bool = WorldState.group().any(func(s: Dictionary) -> bool: return Traits.has(s, "cigarettes_per_day"))
+			return 1.0 if smokers and Stores.total(stores, "cigarettes") < 10.0 else 0.0
 		"weapon":
 			return 1.0 if strategy == &"fortress" or item == "machete" else 0.3
 	return 0.5
@@ -281,7 +317,7 @@ func _need(item: String) -> float:
 
 func _can_fortify_more() -> bool:
 	if strategy == &"keep_moving":
-		return false
+		return Stores.total(WorldState.stores, "materials") < 20.0
 	var base: Dictionary = WorldState.building(String(WorldState.base["building"]))
 	var cap: float = float(Data.entry("buildings", String(base["type"]))["max_barricade"])
 	return float(base["barricade"]) + Stores.total(WorldState.stores, "materials") < cap

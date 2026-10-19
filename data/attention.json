@@ -1,0 +1,25 @@
+{
+  "comment": "How much a site the group uses draws attention: noise, light, smoke and smell build up while people stay and fade after they leave. Units are arbitrary 'attention points'. Signals are per hour while they last; one-off noises add their weight scaled by how close they were (1 - distance/radius).",
+  "signals_per_hour": {
+    "person_present": 0.05,
+    "waste_per_person": 0.04,
+    "cooking_smoke": 0.6,
+    "firelight_at_night": 0.6,
+    "generator_noise": 1.0,
+    "generator_light_at_night": 1.0,
+    "hammering": 0.6,
+    "unburied_body": 0.5
+  },
+  "comment_arrival": "A group carrying its loads through the streets and forcing its way into a building is seen and heard: a new base starts with this much attention.",
+  "arrival": 25.0,
+  "one_off_noise": { "gunshot": 6.0, "door": 1.0, "noise": 0.5 },
+  "half_life_days_empty": 3.0,
+  "half_life_days_occupied": 10.0,
+  "body_smell_days": 3.0,
+  "levels": { "rising": 60.0, "high": 150.0 },
+  "comment_attacks": "Night attacks need the infected to know the group is there: chance scales with attack_baseline + attention / attack_reference, so an unknown new site sees about a third of the attacks of a site that has drawn 100 points.",
+  "attack_baseline": 0.4,
+  "attack_reference": 120.0,
+  "drift_radius_m": 1000.0,
+  "drift_share_per_hour_per_100": 0.0004
+}

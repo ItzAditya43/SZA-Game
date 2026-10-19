@@ -9,18 +9,20 @@ extends "res://core/sim_system.gd"
 const Body := preload("res://core/body.gd")
 const Stores := preload("res://core/stores.gd")
 const Geo := preload("res://core/geo.gd")
+const Traits := preload("res://core/traits.gd")
 
-const JOBS: Array[StringName] = [&"rest", &"scavenge", &"guard", &"fortify", &"collect_water", &"cook", &"treat"]
+const JOBS: Array[StringName] = [&"rest", &"scavenge", &"guard", &"fortify", &"quick_fortify", &"collect_water", &"cook", &"treat"]
 ## Activity while doing each job at base during working hours.
 const JOB_ACTIVITY: Dictionary = {
 	&"guard": &"guarding",
 	&"fortify": &"heavy_work",
+	&"quick_fortify": &"heavy_work",
 	&"collect_water": &"heavy_work",
 	&"cook": &"light_work",
 	&"treat": &"light_work",
 }
 ## Jobs done out in the sun (heat load) rather than indoors.
-const OUTDOOR_JOBS: Array[StringName] = [&"fortify", &"collect_water", &"guard"]
+const OUTDOOR_JOBS: Array[StringName] = [&"fortify", &"quick_fortify", &"collect_water", &"guard"]
 ## Working hours: start an hour into the shift and work 9 hours (07:00-16:00 by day,
 ## 19:00-04:00 by night). Guards watch the whole shift.
 const WORK_START_OFFSET_MIN: int = 60
@@ -55,12 +57,12 @@ const NOISE_SEARCH_M: float = 10.0
 const NOISE_BREAK_DOOR_M: float = 50.0
 ## What goes in the pack first, and at most how many kg of each category per trip.
 const LOOT_PRIORITY: Array[String] = [
-	"antibiotics", "tourniquet", "ors", "bandages", "painkillers", "ammo", "rifle", "machete",
+	"antibiotics", "tourniquet", "ors", "bandages", "painkillers", "cigarettes", "ammo", "rifle", "machete",
 	"water_bottled", "packaged_food", "rice", "dal", "atta", "fresh_produce", "fuel", "cooking_gas",
 	"materials", "water_drum", "generator",
 ]
 const CATEGORY_KG_CAP: Dictionary = {
-	"medicine": 3.0, "weapon": 8.0, "water": 8.0, "food": 14.0, "fuel": 8.0, "materials": 10.0, "gear": 25.0,
+	"medicine": 3.0, "comfort": 1.0, "weapon": 8.0, "water": 8.0, "food": 14.0, "fuel": 8.0, "materials": 10.0, "gear": 25.0,
 }
 ## Gear worth carrying home first when the group has none yet.
 const WANTED_GEAR: Dictionary = {"generator": 1.0, "water_drum": 2.0}
@@ -77,6 +79,8 @@ const CANS_L: float = 20.0
 const FILL_HOURS: float = 1.0 / 6.0
 ## Leave this much in a tank for whoever else depends on it? No: take what you can.
 const MIN_TANK_L: float = 20.0
+## Moving in: the group clears its new building room by room before settling.
+const CLEAR_BUILDING_HOURS: float = 1.0
 
 
 func setup() -> void:
@@ -289,12 +293,19 @@ func _continue_trip(s: Dictionary) -> void:
 	var speed_mult: float = maxf(MIN_SPEED_MULT, Body.work_speed(s))
 	s["asleep"] = false
 	match trip["leg"]:
+		&"prepare":
+			# Hiding what the group can't carry before it leaves.
+			s["activity"] = &"heavy_work"
+			trip["work_ticks_left"] = int(trip["work_ticks_left"]) - 1
+			if int(trip["work_ticks_left"]) <= 0:
+				trip["leg"] = &"out"
 		&"out", &"back":
 			var speed: float = SPEED_OUT_M_PER_H if trip["leg"] == &"out" else SPEED_BACK_M_PER_H
+			speed *= Traits.mult(s, "travel_speed_mult") * float(trip.get("speed_mult", 1.0))
 			trip["progress_m"] = minf(float(trip["distance_m"]), float(trip["progress_m"]) + speed * speed_mult / 6.0)
 			s["activity"] = &"travelling"
 			s["outdoors"] = true
-			s["exposure"] = {"outdoors": true, "building": "", "noise_m": NOISE_TRAVEL_M}
+			s["exposure"] = {"outdoors": true, "building": "", "noise_m": float(trip.get("noise_m", NOISE_TRAVEL_M))}
 			_set_position(s)
 			if float(trip["progress_m"]) >= float(trip["distance_m"]):
 				if trip["leg"] == &"out":
@@ -307,6 +318,15 @@ func _continue_trip(s: Dictionary) -> void:
 			s["exposure"] = {"outdoors": true, "building": "", "noise_m": NOISE_TRAVEL_M,
 				"zone": Geo.zone_index_at(trip["dest"])}
 			_ferry_water(s)
+		&"clear":
+			# Anything trapped inside the new base is met here, as on a search.
+			s["activity"] = &"searching"
+			s["outdoors"] = false
+			s["exposure"] = {"outdoors": false, "building": trip["building"], "noise_m": NOISE_SEARCH_M,
+				"zone": Geo.zone_index_at(trip["dest"])}
+			trip["work_ticks_left"] = int(trip["work_ticks_left"]) - 1
+			if int(trip["work_ticks_left"]) <= 0:
+				_finish_move(s)
 		&"search":
 			s["activity"] = &"searching"
 			s["outdoors"] = false
@@ -335,7 +355,8 @@ func _arrive(s: Dictionary) -> void:
 	s["x_m"] = float(trip["dest"].x)
 	s["y_m"] = float(trip["dest"].y)
 	if trip["kind"] == &"move":
-		_finish_move(s)
+		trip["leg"] = &"clear"
+		trip["work_ticks_left"] = roundi(CLEAR_BUILDING_HOURS * 6.0)
 		return
 	if trip["kind"] == &"collect_water":
 		trip["leg"] = &"fill"
@@ -344,6 +365,7 @@ func _arrive(s: Dictionary) -> void:
 	var hours: float = SEARCH_HOURS * (NIGHT_SEARCH_TIME_MULT if WorldState.phase() == WorldState.PHASE_NIGHT else 1.0)
 	trip["work_ticks_left"] = roundi(hours * 6.0)
 	building["visits"] = int(building["visits"]) + 1
+	_recover_caches(s, building)
 	if building["locked"]:
 		building["locked"] = false
 		EventBus.emit_event(&"noise", {"x_m": s["x_m"], "y_m": s["y_m"], "radius_m": NOISE_BREAK_DOOR_M, "source": &"door"})
@@ -353,13 +375,17 @@ func _arrive(s: Dictionary) -> void:
 
 func _take_loot(s: Dictionary) -> void:
 	var building: Dictionary = WorldState.building(String(s["trip"]["building"]))
-	var share: float = minf(SEARCH_SHARE_MAX, SEARCH_SHARE_BASE + SEARCH_SHARE_PER_SKILL * Body.skill(s, "scavenging"))
+	var share: float = minf(SEARCH_SHARE_MAX, SEARCH_SHARE_BASE + SEARCH_SHARE_PER_SKILL * Body.skill(s, "scavenging")
+		+ Traits.add(s, "search_share_add"))
 	if WorldState.phase() == WorldState.PHASE_NIGHT:
 		share *= NIGHT_SEARCH_SHARE_MULT
-	var capacity: float = CARRY_KG * clampf(Body.work_speed(s), MIN_SPEED_MULT, 1.0) - _carried_kg(s)
+	var capacity: float = CARRY_KG * Traits.mult(s, "carry_kg_mult") * clampf(Body.work_speed(s), MIN_SPEED_MULT, 1.0) - _carried_kg(s)
 	var category_kg: Dictionary = {}
 	for item: String in _loot_order():
-		var available: float = Stores.total(building["loot"], item) * share
+		var item_share: float = share
+		if Data.entry("items", item).get("category", "") == "medicine":
+			item_share = minf(SEARCH_SHARE_MAX, share * Traits.mult(s, "medicine_find_mult"))
+		var available: float = Stores.total(building["loot"], item) * item_share
 		if available <= Stores.EPSILON or capacity <= 0.0:
 			continue
 		var row: Dictionary = Data.entry("items", item)
@@ -446,13 +472,27 @@ func _on_base_moved(payload: Dictionary) -> void:
 	var from: Vector2 = Geo.building_center_m(WorldState.building(String(payload["from"])))
 	var target: Dictionary = WorldState.building(String(payload["to"]))
 	var dest: Vector2 = Geo.building_center_m(target)
+	var prepare_ticks: int = roundi(float(payload.get("hide_hours", 0.0)) * 6.0)
 	for s: Dictionary in WorldState.group():
 		if s["location"] != &"base":
 			continue
 		s["location"] = &"away"
-		s["trip"] = {"kind": &"move", "building": target["id"], "place": target["name"], "leg": &"out", "origin": from,
-			"dest": dest, "distance_m": Geo.street_distance_m(from, dest), "progress_m": 0.0, "work_ticks_left": 0,
-			"started_tick": WorldState.tick}
+		s["trip"] = {"kind": &"move", "building": target["id"], "place": target["name"],
+			"leg": &"prepare" if prepare_ticks > 0 else &"out", "origin": from, "dest": dest,
+			"distance_m": Geo.street_distance_m(from, dest), "progress_m": 0.0, "work_ticks_left": prepare_ticks,
+			"started_tick": WorldState.tick, "speed_mult": float(payload.get("speed_mult", 1.0)),
+			"noise_m": float(payload.get("noise_m", NOISE_TRAVEL_M))}
+
+
+## A cache the group hid here goes back into the building's loot for this search.
+func _recover_caches(s: Dictionary, building: Dictionary) -> void:
+	for cache: Dictionary in WorldState.caches.duplicate():
+		if cache["building"] != building["id"]:
+			continue
+		Stores.merge_into(building["loot"], cache["items"])
+		WorldState.caches.erase(cache)
+		EventBus.emit_event(&"cache_recovered", {"survivor": s["id"], "building": building["id"],
+			"text": "%s digs out the group's cache at %s." % [s["name"], building["name"]]})
 
 
 func _finish_move(s: Dictionary) -> void:
