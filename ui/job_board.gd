@@ -17,7 +17,7 @@ const JOB_HINTS: Dictionary = {
 	&"quick_barricade": "",
 	&"quick_fortify": "Fast, weaker barricades up to 40% of the building's cap: for a new base.",
 	&"collect_water": "Fill containers from the taps; after they fail, fetch water from tanks or the canal.",
-	&"cook": "Cook rice, dal and atta into meals (needs gas or firewood). Hot meals ease stress.",
+	&"cook": "Cook rice, lentils and flour into meals (needs gas or firewood). Hot meals ease stress.",
 	&"treat": "Dress and stitch wounds, slow infections. Best with medicine skill.",
 }
 

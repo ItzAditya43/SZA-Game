@@ -57,8 +57,8 @@ const NOISE_SEARCH_M: float = 10.0
 const NOISE_BREAK_DOOR_M: float = 50.0
 ## What goes in the pack first, and at most how many kg of each category per trip.
 const LOOT_PRIORITY: Array[String] = [
-	"antibiotics", "tourniquet", "ors", "bandages", "painkillers", "cigarettes", "ammo", "rifle", "machete",
-	"water_bottled", "packaged_food", "rice", "dal", "atta", "fresh_produce", "fuel", "cooking_gas",
+	"antibiotics", "tourniquet", "rehydration_salts", "bandages", "painkillers", "cigarettes", "ammo", "rifle", "machete",
+	"water_bottled", "packaged_food", "rice", "lentils", "flour", "fresh_produce", "fuel", "cooking_gas",
 	"materials", "water_drum", "generator",
 ]
 const CATEGORY_KG_CAP: Dictionary = {

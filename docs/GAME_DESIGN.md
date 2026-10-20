@@ -8,7 +8,7 @@ Prototype 1 is a playable, art-free simulation: one small town, one group of 5 s
 
 - **Engine:** Godot 4 with GDScript (Python-like syntax, free, light). Everything built here carries over into the full game.
 - **Look:** top-down tile grid. Coloured squares, icons and text panels only. No models, no animation.
-- **Setting:** a fictional small Indian district town, roughly 2 km × 2 km, shown as a 64 × 64 tile map. Real building types, real infrastructure, realistic failure timing.
+- **Setting:** a fictional small town (its name and everyone's names are rolled per run, from a deliberately mixed pool), roughly 2 km × 2 km, shown as a 64 × 64 tile map. Real building types, real infrastructure, realistic failure timing.
 - **Player role:** group leader. You assign jobs, choose where to scavenge, decide rationing and who gets medicine. You don't control a single character directly.
 - **Effort:** roughly 70–90 hours of focused work with the realism upgrades (see Fidelity map), so about 8–10 weeks part-time.
 - **Who builds what:** the designer sets the rules and tunes the numbers; Claude Code writes most of the GDScript from this spec, one milestone at a time.
@@ -21,7 +21,7 @@ Anything not in the "Now" column is out of Prototype 1, however tempting. The ar
 | --- | --- | --- |
 | Map | One town, 64 × 64 tiles, hand-made in a data file | Multiple towns, region map, procedural layout |
 | Survivors | One group of 5, named, with stats and 3 skills | Recruiting, families, relationships, traits |
-| Time | 30 days, 10-minute ticks, day/night | Day 100+, seasons, monsoon and summer heat |
+| Time | 30 days, 10-minute ticks, day/night | Day 100+, seasons, the rainy season and summer heat |
 | Resources | Water, food, medicine, fuel, materials | Ammo crafting, trade goods, farming, livestock |
 | Infrastructure | Power and water mains fail on a timer | Repairable grid, wells, solar, radio network |
 | Infected | Zone populations, noise attraction, slow die-off | Mutation and evolution, special late-stage forms |
@@ -74,25 +74,25 @@ The town has about 60 buildings of 10 types. Each type has a loot table, and eve
 
 | Building type | Count | Main loot | Danger |
 | --- | --- | --- | --- |
-| House | 30 | Rice, dal, utensils, a little medicine | Low |
-| Kirana store | 6 | Packaged food, bottled water, matches | Medium |
+| House | 30 | Rice, lentils, utensils, a little medicine | Low |
+| Grocery store | 6 | Packaged food, bottled water, matches | Medium |
 | Pharmacy | 2 | Antibiotics, bandages, painkillers | High (looted early) |
-| Petrol pump | 2 | Fuel, a few snacks | Medium |
+| Fuel station | 2 | Fuel, a few snacks | Medium |
 | Hardware shop | 2 | Tools, wire, sheets, nails | Low |
 | School | 2 | Space, benches (materials), a water tank | Medium |
 | Hospital | 1 | Large medical stock | Very high |
 | Police station | 1 | Rare weapons and ammo, strong walls | High |
 | Water tank tower | 2 | Thousands of litres of water until it empties | Low |
-| Factory or godown | 2 | Materials, bulk food sacks | Medium |
+| Factory or warehouse | 2 | Materials, bulk food sacks | Medium |
 
 - **Looted rate:** other survivors are not simulated, so every building loses a share of its loot per day (pharmacies 15%, stores 8%, houses 2%). This makes waiting costly.
 
 ### 5. Resources and spoilage
 
 - **Water:** bottled water keeps forever. Tank and canal water must be boiled (1 unit of fuel per 10 litres) or carries a 30% chance of illness per day of drinking.
-- **Food:** fresh food spoils in 3–5 days, cooked meals in 1 day, rice and dal keep for months, packaged food for months to years.
+- **Food:** fresh food spoils in 3–5 days, cooked meals in 1 day, rice and lentils keep for months, packaged food for months to years.
 - **Medicine:** bandages, antibiotics, painkillers. Antibiotics are the scarce lifeline.
-- **Fuel:** petrol and diesel for a generator or cooking. Petrol starts degrading after about 30 days.
+- **Fuel:** gasoline and diesel for a generator or cooking. Gasoline starts degrading after about 30 days.
 - **Materials:** generic units for barricades and repairs.
 
 ### 6. Infrastructure collapse
@@ -105,7 +105,7 @@ The town has about 60 buildings of 10 types. Each type has a loot table, and eve
 
 The infected are sick living people, not undead. That is what makes the world change over 30 days.
 
-- **Populations:** the map is split into 16 zones (4 × 4). Each zone holds an infected count, starting high near the hospital, market and bus stand.
+- **Populations:** the map is split into 16 zones (4 × 4). Each zone holds an infected count, starting high near the hospital, market and bus station.
 - **Noise attraction:** noise events pull infected from nearby zones. Gunshot reaches about 600 m, a generator about 150 m, breaking a door about 50 m, quiet searching about 10 m.
 - **Activity:** less active in the midday heat (12:00–16:00), most active at night. This gives the player a reason to scavenge at the hottest time.
 - **Die-off:** the infected don't eat well or treat wounds. From day 15, each zone loses about 2% of its infected per day. By day 30 the town is noticeably emptier.
@@ -129,7 +129,7 @@ Every system in the game, from Prototype 1 to release, follows these seven rules
 
 1. **Real units, not abstract bars.** Water is litres, food is kilocalories, fuel is litres, distance is metres, time is minutes. Bars in the UI are views of real quantities.
 2. **Nothing is magic.** The infected are sick living humans. Medicine works only if the right drug meets the right condition. Walls hold only as long as their material does.
-3. **Everything decays.** Food spoils by temperature and humidity, fuel goes stale, batteries drain, wounds worsen, buildings rot in the monsoon, knowledge is lost when the person who has it dies.
+3. **Everything decays.** Food spoils by temperature and humidity, fuel goes stale, batteries drain, wounds worsen, buildings rot in the rainy season, knowledge is lost when the person who has it dies.
 4. **Causes before effects.** No random disasters from nowhere. A fire starts from a candle, a cooking stove or lightning. Cholera starts from a contaminated water source. The player can always trace why.
 5. **The world runs without you.** Other survivors, the infected, animals and weather all keep acting off-screen.
 6. **Time is the real enemy.** Early on, the infected kill people. Later, hunger, disease, weather and other humans kill far more.
@@ -143,7 +143,7 @@ Hunger, disease and people overtake the infected as the main threat over time.
 | --- | --- | --- | --- | --- |
 | Collapse | 0–7 | Outbreak spreads, lockdowns, panic buying; hospitals overrun, power and phones still on; checkpoints and first relief camps | Infected, panic | Prototype 1 |
 | Breakdown | 7–30 | Power fails day 3–6, water mains day 7–12; broadcasts stop, camps fall, shops looted; groups form at schools and police stations | Infected, injuries | Prototype 1 |
-| Scarcity | 30–100 | Easy loot gone, infected start dying off; first monsoon brings floods, cholera, malaria; groups trade, raid and fight over food | Hunger, disease | Prototype 2–3 |
+| Scarcity | 30–100 | Easy loot gone, infected start dying off; first rainy season brings floods, cholera, malaria; groups trade, raid and fight over food | Hunger, disease | Prototype 2–3 |
 | Adaptation | 100–365 | Farming, rain catchment, real bases; first mutation stages appear; summer heat and fights over water | Other people | Early access |
 | Rebuilding | 365–1000+ | Settlements, laws, leaders, trade routes; a mutated ecosystem the world adapts to; children born after the outbreak | Politics, mutation | Full game |
 
@@ -178,14 +178,14 @@ Every wound has a location, a bleed rate and a contamination level.
 ### Disease
 
 - **Waterborne:** cholera, typhoid and dysentery from unboiled water or bad sanitation. Severe diarrhoea can kill through dehydration in 1–2 days; oral rehydration salts save lives.
-- **Vector-borne:** malaria and dengue rise sharply in the monsoon when stagnant water breeds mosquitoes. Nets and clearing standing water matter.
+- **Vector-borne:** malaria and dengue rise sharply in the rainy season when stagnant water breeds mosquitoes. Nets and clearing standing water matter.
 - **Crowding:** respiratory infections and skin infections spread faster in packed, unwashed shelters.
 - **Sanitation:** no latrine or one too close to the water source means outbreaks. Rubbish piles attract rats and dogs.
 
 ### Heat, cold and sleep
 
 - **Body temperature:** heavy work in 42 °C summer heat causes heat exhaustion, then heatstroke. Shade, water and working at dawn or dusk are real strategies.
-- **Cold and wet:** rare in most of India, but monsoon soaking plus no dry shelter causes illness and lowers morale.
+- **Cold and wet:** rare in a hot climate, but rainy-season soaking plus no dry shelter causes illness and lowers morale.
 - **Sleep:** under 5 hours a night stacks up a sleep debt. After 2–3 bad nights, mistakes, accidents and bad decisions rise.
 
 ### The mind
@@ -221,7 +221,7 @@ The infected are living bodies running on damage, so they follow physical rules:
 - They overheat in 40 °C+ summer days and slow down. They are more active at dawn, dusk and night.
 - Senses: hearing and smell are sharp, eyesight is poor. Light at night draws them from far away.
 - They cluster around noise and the smell of blood or food, forming hordes.
-- Monsoon flooding drowns and scatters them; heat waves kill weakened ones.
+- Rainy-season flooding drowns and scatters them; heat waves kill weakened ones.
 
 ### Mutation (Early access onward)
 
@@ -239,19 +239,19 @@ Players learn about new stages from observation, notes and other survivors, neve
 
 ## Environment
 
-The setting is a fictional district in South India, so the climate drives the year. Each season changes what is dangerous and what is possible.
+The setting is a fictional town in a hot climate with a long rainy season, so the climate drives the year. Each season changes what is dangerous and what is possible.
 
 | Season | Months | Conditions | What changes in play |
 | --- | --- | --- | --- |
 | Summer | Mar–May | 35–44 °C, dry, heat waves | Water need doubles, infected slow at midday, fires spread fast, tanks run dry |
-| Monsoon | Jun–Sep | Heavy rain, flooding, humidity | Rain refills tanks, roads flood, food spoils faster, malaria and dengue rise, buildings leak |
-| Post-monsoon | Oct–Nov | Warm, cyclones possible | Best planting window, storms can wreck walls |
+| Rainy season | Jun–Sep | Heavy rain, flooding, humidity | Rain refills tanks, roads flood, food spoils faster, malaria and dengue rise, buildings leak |
+| After the rains | Oct–Nov | Warm, cyclones possible | Best planting window, storms can wreck walls |
 | Winter | Dec–Feb | 15–28 °C, dry, cool nights | Easiest season to work and scavenge, harvest time |
 
 ### Weather and disasters
 
 - **Rain:** a real rain model fills tanks by roof area (1 mm on 1 m² = 1 litre). A 100 m² roof in a 20 mm storm collects about 2,000 litres.
-- **Floods:** low-lying tiles flood in heavy monsoon weeks, cutting roads and drowning stored food on ground floors.
+- **Floods:** low-lying tiles flood in the heaviest rainy weeks, cutting roads and drowning stored food on ground floors.
 - **Fire:** spreads by wind, dry material and building type. Thatch and shops full of goods burn fast; concrete houses resist. Market fires in summer can burn whole blocks.
 - **Lightning and cyclones:** rare, but damaging to walls, roofs and generators.
 
@@ -259,7 +259,7 @@ The setting is a fictional district in South India, so the climate drives the ye
 
 - **Stray dogs:** packs grow as people disappear. Dangerous at night, rabies risk, but can be befriended as guards.
 - **Monkeys:** steal food from poorly sealed stores.
-- **Snakes:** more common in monsoon and around overgrown buildings; a cobra or krait bite needs antivenom, which only hospitals stock.
+- **Snakes:** more common in the rainy season and around overgrown buildings; a venomous bite needs antivenom, which only hospitals stock.
 - **Rats:** follow rubbish and stored grain; spread disease and eat stockpiles.
 - **Livestock:** abandoned cows, goats and chickens can be caught and kept for milk, eggs and meat.
 
@@ -274,7 +274,7 @@ These three signals decide what finds you.
 ### The decaying town
 
 - Grass and weeds take over roads in months; trees crack walls in years.
-- Unmaintained buildings leak and rot after one or two monsoons; some collapse.
+- Unmaintained buildings leak and rot after one or two rainy seasons; some collapse.
 - Abandoned vehicles block roads, which makes routes and travel time change over the game.
 
 ## Society and economy
@@ -283,7 +283,7 @@ Other people are the long-term story. They follow the same needs as your survivo
 
 ### Authority collapse
 
-- **Day 0–3:** police and district administration impose lockdowns and checkpoints. Hospitals overflow. Radio and TV give official instructions.
+- **Day 0–3:** police and local government impose lockdowns and checkpoints. Hospitals overflow. Radio and TV give official instructions.
 - **Day 3–10:** evacuation convoys and relief camps form at schools and stadiums. Some are overrun, leaving supplies, vehicles and weapons behind.
 - **Day 10–30:** official broadcasts thin out, then stop. Abandoned checkpoints become loot sites; camps become the first large survivor groups.
 - **Later:** occasional radio signals, a rumoured safe zone, a supply drop that may or may not be real. Hope is a resource too.
@@ -312,12 +312,12 @@ Each group is simulated with a population, food and water days, weapons, morale,
 ### Barter economy
 
 - Money is worthless within weeks. Value comes from scarcity: antibiotics, clean water, fuel, salt, ammunition, seeds and batteries become currencies.
-- Each item's value changes with supply and season. Water is cheap in the monsoon and precious in May; medicine is precious always.
+- Each item's value changes with supply and season. Water is cheap in the rainy season and precious at the end of the dry season; medicine is precious always.
 - Trade needs trust. Traders travel with risk, and a broken deal changes how a group treats you.
 
 ### Knowledge and skills
 
-- Skills come from real jobs before the outbreak: nurse, electrician, farmer, mechanic, teacher, cook, police constable.
+- Skills come from real jobs before the outbreak: nurse, electrician, farmer, mechanic, teacher, cook, police officer.
 - Knowledge can be taught, written down or found in books. A settlement that loses its only doctor loses that capability until someone learns.
 - Long-term projects need knowledge: repairing a solar panel, digging a well, purifying water at scale, building a clinic.
 
@@ -334,7 +334,7 @@ Hyper-realism is the target for the full game. Prototype 1 takes the realistic p
 | Mind | Stress from danger, hunger and loss | Trauma, breakdowns, relationships | Leadership legitimacy, faith and culture |
 | Pathogen | Bite, incubation, hidden bites, prodrome | Blood transmission, carriers | Mutation stages, airborne strain |
 | Infected | Need water, overheat, die off, sound and light attraction | Smell and wind, hordes | Ecosystem of mutated forms |
-| Environment | Day and night, summer heat | Monsoon, floods, fire spread | Animals, cyclones, building decay over years |
+| Environment | Day and night, summer heat | Rainy season, floods, fire spread | Animals, cyclones, building decay over years |
 | Society | Authority-collapse timeline as events and loot sites | One rival group, barter | Many factions, trade routes, crime and law |
 
 The upgraded Prototype 1 adds roughly 20–25 hours to the original estimate, so plan for about 70–90 hours in total.

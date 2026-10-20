@@ -1,6 +1,6 @@
 # Survival Sim — project guide for Claude Code
 
-A realistic, strategic zombie/mutant apocalypse survival simulation set in a fictional South Indian district town. Built in Godot 4 with GDScript. The world is the main character: systems keep running whether or not the player looks.
+A realistic, strategic zombie/mutant apocalypse survival simulation set in a fictional small town (names are rolled per run from data/names.json; keep the setting culturally neutral). Built in Godot 4 with GDScript. The world is the main character: systems keep running whether or not the player looks.
 
 ## Read these first
 
@@ -26,11 +26,11 @@ Prototype 1: one town, 4–6 survivors, survive 30 in-game days. Art-free (colou
 
 ```
 res://
-  data/     buildings.json, loot_tables.json, items.json, survivors.json, events.json
+  data/     buildings.json, loot_tables.json, items.json, survivors.json, events.json, names.json
             + town.json (from tools/make_town.py), scenario.json (start state, timings)
   core/     tick_loop.gd, world_state.gd, event_bus.gd, data_loader.gd, rng.gd
             + sim_run.gd (starts a run), sim_system.gd (system base class),
-              stores.gd, body.gd, geo.gd, decisions.gd (plain-data helpers any system may use)
+              stores.gd, body.gd, geo.gd, decisions.gd, names.gd (plain-data helpers any system may use)
             + insight.gd (read-only breakdowns and forecasts for the UI, built from system constants)
   systems/  time.gd, survivors.gd, jobs.gd, town.gd, resources.gd,
             infrastructure.gd, infected.gd, base.gd, events.gd, + outcome.gd

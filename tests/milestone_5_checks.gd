@@ -82,8 +82,8 @@ func _check_fortress_holds() -> void:
 		Stores.add(WorldState.stores, "water_bottled", 300.0)
 		Stores.add(WorldState.stores, "packaged_food", 100000.0)
 		_all_jobs(&"rest", &"rest")
-		EventBus.emit_event(&"command_set_job", {"survivor": "ravi", "shift": &"night", "job": &"guard"})
-		EventBus.emit_event(&"command_set_job", {"survivor": "farhan", "shift": &"night", "job": &"guard"})
+		EventBus.emit_event(&"command_set_job", {"survivor": "officer", "shift": &"night", "job": &"guard"})
+		EventBus.emit_event(&"command_set_job", {"survivor": "mechanic", "shift": &"night", "job": &"guard"})
 		_move_base_now("police_station_01")
 		WorldState.building("police_station_01")["barricade"] = 100.0
 		_crowd_base_zone(1200.0)
@@ -99,7 +99,7 @@ func _check_fortress_holds() -> void:
 func _check_fortify() -> void:
 	start(1800)
 	_all_jobs(&"rest", &"rest")
-	EventBus.emit_event(&"command_set_job", {"survivor": "arjun", "shift": &"day", "job": &"fortify"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "electrician", "shift": &"day", "job": &"fortify"})
 	Stores.add(WorldState.stores, "materials", 40.0)
 	var before: float = Stores.total(WorldState.stores, "materials")
 	TickLoop.run_headless(ticks_for_hours(12.0))
@@ -113,18 +113,18 @@ func _check_fortify() -> void:
 func _check_cooking() -> void:
 	start(1900)
 	_all_jobs(&"rest", &"rest")
-	EventBus.emit_event(&"command_set_job", {"survivor": "lakshmi", "shift": &"day", "job": &"cook"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "farmer", "shift": &"day", "job": &"cook"})
 	WorldState.stores.erase("packaged_food")
 	WorldState.stores.erase("fresh_produce")
 	var gas: float = Stores.total(WorldState.stores, "cooking_gas")
 	var staples: float = _staples()
 	TickLoop.run_headless(ticks_for_hours(8.0))
-	expect("the cook turns rice and dal into meals, burning gas", _staples() < staples - 5000.0
+	expect("the cook turns rice and lentils into meals, burning gas", _staples() < staples - 5000.0
 		and Stores.total(WorldState.stores, "cooking_gas") < gas, "%.0f kcal cooked, %.2f kg gas used" % [staples - _staples(), gas - Stores.total(WorldState.stores, "cooking_gas")])
 	expect("the group eats the cooked meals at 13:00", WorldState.survivors.all(func(s: Dictionary) -> bool: return float(s["kcal_eaten_today"]) > 500.0))
 	start(1901)
 	_all_jobs(&"rest", &"rest")
-	EventBus.emit_event(&"command_set_job", {"survivor": "lakshmi", "shift": &"day", "job": &"cook"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "farmer", "shift": &"day", "job": &"cook"})
 	WorldState.stores.erase("cooking_gas")
 	var wood: float = Stores.total(WorldState.stores, "materials")
 	TickLoop.run_headless(ticks_for_hours(8.0))
@@ -132,7 +132,7 @@ func _check_cooking() -> void:
 		and Stores.total(WorldState.stores, "cooked_meal") + 1.0 > 0.0, "%.1f units burned" % (wood - Stores.total(WorldState.stores, "materials")))
 	start(1902)
 	_all_jobs(&"rest", &"rest")
-	EventBus.emit_event(&"command_set_job", {"survivor": "lakshmi", "shift": &"day", "job": &"cook"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "farmer", "shift": &"day", "job": &"cook"})
 	WorldState.stores.erase("cooking_gas")
 	WorldState.stores.erase("materials")
 	TickLoop.run_headless(ticks_for_hours(4.0))
@@ -174,7 +174,7 @@ func _illness_days(run_seed: int, boil: bool) -> int:
 func _check_collect_water() -> void:
 	start(2100)
 	_all_jobs(&"rest", &"rest")
-	EventBus.emit_event(&"command_set_job", {"survivor": "lakshmi", "shift": &"day", "job": &"collect_water"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "farmer", "shift": &"day", "job": &"collect_water"})
 	TickLoop.run_headless(ticks_for_hours(8.0))
 	var stored: float = Stores.total(WorldState.stores, "water_boiled")
 	expect("while the taps run, collecting fills the group's containers with safe water (200 L without drums)",
@@ -182,7 +182,7 @@ func _check_collect_water() -> void:
 	start(2101)
 	_dry_taps()
 	_all_jobs(&"rest", &"rest")
-	EventBus.emit_event(&"command_set_job", {"survivor": "lakshmi", "shift": &"day", "job": &"collect_water"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "farmer", "shift": &"day", "job": &"collect_water"})
 	TickLoop.run_headless(ticks_for_hours(12.0))
 	var ferried: Array[Dictionary] = events_named(&"water_collected")
 	var litres: float = float(ferried[0]["payload"]["litres"]) if not ferried.is_empty() else 0.0
@@ -262,4 +262,4 @@ func _drunk() -> float:
 
 
 func _staples() -> float:
-	return Stores.total(WorldState.stores, "rice") + Stores.total(WorldState.stores, "dal") + Stores.total(WorldState.stores, "atta")
+	return Stores.total(WorldState.stores, "rice") + Stores.total(WorldState.stores, "lentils") + Stores.total(WorldState.stores, "flour")

@@ -1,0 +1,47 @@
+{
+  "comment": "Names are rolled per run from the seed (core/names.gd), on their own random stream so they never change what happens in the simulation. Pools are deliberately mixed: no one country, no one language. People get a given name only; houses take a surname; shops and public buildings fill a pattern. {surname}, {word} and {town} are filled in; every name in a run is unique.",
+
+  "given_names": [
+    "Alex", "Sam", "Noor", "Mika", "Jordan", "Ren", "Ana", "Tomas", "Leila", "Kofi",
+    "Ines", "Yuki", "Omar", "Priya", "Lucas", "Hana", "Mateo", "Zara", "Ivan", "Amara",
+    "Chen", "Sofia", "Diego", "Aiko", "Elias", "Nadia", "Kai", "Marta", "Tariq", "Lena",
+    "Joon", "Rosa", "Felix", "Ada", "Nico", "Samira", "Emeka", "Clara", "Arun", "Mila",
+    "Hugo", "Asha", "Bram", "Lina", "Dario", "Imani", "Oskar", "Yara", "Teo", "Esme",
+    "Rafa", "Sana", "Pavel", "Nia", "Jonah", "Malik", "Vera", "Kenji", "Lucia", "Ayo",
+    "Robin", "Taylor", "Casey", "Morgan", "Quinn", "Riley", "Sasha", "Jamie", "Avery", "Rowan"
+  ],
+
+  "surnames": [
+    "Okafor", "Novak", "Silva", "Tanaka", "Haddad", "Kowalski", "Moreau", "Mensah", "Larsen", "Costa",
+    "Petrov", "Nguyen", "Romero", "Fischer", "Abara", "Lindqvist", "Ortiz", "Kim", "Duarte", "Weber",
+    "Ibrahim", "Rossi", "Kaur", "Brennan", "Sato", "Varga", "Achebe", "Morales", "Jansen", "Popescu",
+    "Ahmadi", "Byrne", "Castillo", "Dimitrov", "Eriksen", "Fontaine", "Garcia", "Horvat", "Ito", "Jovanovic",
+    "Keller", "Lopez", "Mbeki", "Nakamura", "Oliveira", "Park", "Quint", "Reyes", "Svensson", "Tran",
+    "Ueda", "Vasquez", "Wojcik", "Yilmaz", "Zhou", "Adeyemi", "Bauer", "Cruz", "Dalton", "Ekwueme"
+  ],
+
+  "towns": [
+    "Ashford", "Marrow Creek", "Port Delane", "Kessel", "Orlin", "Tamsey", "Vell", "Brannock",
+    "Selby Cross", "Halvar", "Dunmere", "Corvo", "Eastwick", "Lowmoor", "Santa Ines", "Riverend",
+    "Greyhaven", "Altamira", "Kirkby Vale", "Mossbank", "Otterburn", "Pellam", "Westfold", "Calder"
+  ],
+
+  "words": [
+    "Riverside", "Hillview", "Oakfield", "Central", "Station", "Lakeside", "Greenway", "Sunrise",
+    "Northgate", "Old Mill", "Cedar", "Harbour", "Union", "Meadow", "Pioneer", "Summit",
+    "Bridge Street", "Canal Side", "Westend", "Eastside", "Highland", "Maple", "Orchard", "Crossroads"
+  ],
+
+  "buildings": {
+    "house": ["{surname} house"],
+    "grocery": ["{surname}'s Grocery", "{word} Mini-Mart", "{word} Foods", "Daily Needs ({word})", "{surname} General Store", "Corner Shop ({word})"],
+    "pharmacy": ["{surname} Pharmacy", "{word} Chemist", "{town} Pharmacy", "Good Health Pharmacy ({word})"],
+    "fuel_station": ["{word} Fuel", "{town} Service Station", "{surname} Fuel & Garage"],
+    "hardware": ["{surname} Hardware", "{word} Tools & Paint", "{town} Building Supplies"],
+    "school": ["{word} Primary School", "{town} High School", "{surname} Memorial School", "{word} Secondary School"],
+    "hospital": ["{town} General Hospital"],
+    "police_station": ["{town} Police Station"],
+    "water_tower": ["{word} Water Tower"],
+    "factory": ["{word} Warehouse", "{surname} Mill", "{town} Food Depot", "{word} Packing Plant"]
+  }
+}

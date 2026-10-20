@@ -39,3 +39,12 @@ func get_state() -> int:
 
 func set_state(state: int) -> void:
 	_rng.state = state
+
+
+## A separate generator for things that must never shift the simulation's own
+## sequence, such as names: the same seed gives the same names, and rolling them
+## doesn't change a single outcome. `salt` keeps different uses apart.
+static func stream(run_seed: int, salt: String) -> RandomNumberGenerator:
+	var out: RandomNumberGenerator = RandomNumberGenerator.new()
+	out.seed = hash("%d:%s" % [run_seed, salt])
+	return out

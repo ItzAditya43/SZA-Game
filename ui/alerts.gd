@@ -41,7 +41,7 @@ static func current(cues: Dictionary) -> Array:
 	elif float(food["days"]) < 4.0:
 		out.append(_alert("food", "food", "caution", "Food lasts about %.1f days." % float(food["days"])))
 	if String(food["forecast"]).contains("nobody is on the cook job"):
-		out.append(_alert("cook", "cook", "caution", "Most food is raw rice and dal: put someone on the Cook job."))
+		out.append(_alert("cook", "cook", "caution", "Most food is raw rice and lentils: put someone on the Cook job."))
 	for s: Dictionary in WorldState.group():
 		_survivor_alerts(s, out)
 	match WorldState.base.get("attention_level", &"low"):

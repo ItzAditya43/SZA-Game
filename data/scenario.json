@@ -6,11 +6,11 @@
   },
   "start_building": "house_04",
   "default_roster": [
-    "meera",
-    "arjun",
-    "farhan",
-    "lakshmi",
-    "ravi"
+    "nurse",
+    "electrician",
+    "mechanic",
+    "farmer",
+    "officer"
   ],
   "roster_size": 5,
   "start_stores": {
@@ -18,17 +18,17 @@
     "packaged_food": 12000,
     "fresh_produce": 4000,
     "rice": 10000,
-    "dal": 5000,
+    "lentils": 5000,
     "fuel": 12,
     "cooking_gas": 6,
     "bandages": 4,
     "painkillers": 2,
-    "ors": 2,
+    "rehydration_salts": 2,
     "materials": 6,
     "cigarettes": 5
   },
   "climate": {
-    "comment": "Mid-April to mid-May on the South Indian plains. Daily min/max ramp linearly over the run; the warmest hour is ~14:30, the coolest ~05:30.",
+    "comment": "Mid-April to mid-May in a hot, dry climate (the hottest weeks before the summer rains). Daily min/max ramp linearly over the run; the warmest hour is ~14:30, the coolest ~05:30.",
     "min_c_start": 26.0,
     "min_c_end": 28.0,
     "max_c_start": 37.0,

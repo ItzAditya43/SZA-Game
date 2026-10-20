@@ -33,7 +33,7 @@ func _rest_everyone() -> void:
 
 func _check_trip_estimate_matches_trip() -> void:
 	var errors: PackedStringArray = []
-	for target: String in ["kirana_02", "school_01", "pharmacy_01"]:
+	for target: String in ["grocery_02", "school_01", "pharmacy_01"]:
 		for depart: StringName in [&"midday", &"dusk"]:
 			start(900)
 			_rest_everyone()
@@ -62,7 +62,7 @@ func _check_trip_estimate_matches_trip() -> void:
 func _check_risk_bands_follow_time_of_day() -> void:
 	start(901)
 	var s: Dictionary = WorldState.group()[0]
-	var b: Dictionary = WorldState.building("kirana_02")
+	var b: Dictionary = WorldState.building("grocery_02")
 	var midday: Dictionary = Insight.trip_estimate(s, b, &"midday")
 	var night: Dictionary = Insight.trip_estimate(s, b, &"night")
 	expect("a night trip is estimated as more dangerous than a midday one", float(night["hurt"]) > float(midday["hurt"]),
@@ -156,7 +156,7 @@ func check_screen(main: Node) -> int:
 		tabs.current_tab = i
 	for overlay: String in ["noise", "light", "smell", "attention", "disease", "infected"]:
 		hud.call("set_overlay", overlay)
-	hud.get("planner").call("open", "kirana_02", "")
+	hud.get("planner").call("open", "grocery_02", "")
 	expect("the main screen builds, runs a day and switches every tab and overlay", tabs.get_tab_count() == 5)
 	print("\n%d/%d checks passed" % [checks - failures, checks])
 	return 1 if failures > 0 else 0

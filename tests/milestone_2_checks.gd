@@ -1,7 +1,8 @@
 extends "res://tests/checks_base.gd"
 ## Milestone 2: survivors and needs.
 
-const EXPECTED_NAMES: Array[String] = ["Meera", "Arjun", "Farhan", "Lakshmi", "Ravi"]
+const EXPECTED_IDS: Array[String] = ["nurse", "electrician", "mechanic", "farmer", "officer"]
+const Names := preload("res://core/names.gd")
 
 
 func run_checks() -> void:
@@ -17,10 +18,21 @@ func run_checks() -> void:
 
 func _check_roster() -> void:
 	start(2)
+	var ids: Array = WorldState.survivors.map(func(s: Dictionary) -> String: return s["id"])
+	expect("5 survivors load from data/survivors.json", ids == EXPECTED_IDS, str(ids))
 	var names: Array = WorldState.survivors.map(func(s: Dictionary) -> String: return s["name"])
-	expect("5 survivors load from data/survivors.json", names == EXPECTED_NAMES, str(names))
-	var meera: Dictionary = WorldState.survivor("meera")
-	expect("skills and stats come from data (Meera: medicine 8, stress 45)",
+	var pool: Array = Data.table("names")["given_names"]
+	expect("their names come from the mixed pool in data/names.json, no two alike",
+		names.all(func(n: String) -> bool: return pool.has(n)) and names.size() == 5
+		and _unique(names), str(names))
+	var again: Dictionary = Names.generate(2)
+	var other: Dictionary = Names.generate(3)
+	expect("the same seed gives the same names; another seed gives others",
+		again == WorldState.names and other["people"] != again["people"], "%s / %s" % [again["town"], other["town"]])
+	var buildings: Array = WorldState.buildings.map(func(b: Dictionary) -> String: return b["name"])
+	expect("every building has a generated name, all different", _unique(buildings) and not buildings.has(""), str(buildings.slice(0, 4)))
+	var meera: Dictionary = WorldState.survivor("nurse")
+	expect("skills and stats come from data (the nurse: medicine 8, stress 45)",
 		int(meera["skills"]["medicine"]) == 8 and is_equal_approx(float(meera["stress"]), 45.0))
 	expect("starting stores come from scenario.json (46 L bottled water, 31,000 kcal food)",
 		is_equal_approx(Stores.total(WorldState.stores, "water_bottled"), 46.0)
@@ -36,7 +48,7 @@ func _check_meals_and_drinking() -> void:
 		return float(s["kcal_eaten_today"]) > 500.0 and float(s["kcal_debt"]) < 100.0)
 	expect("at 08:00 everyone at base eats what they have burned since 06:00 (and a little more)", ate,
 		str(WorldState.survivors.map(func(s: Dictionary) -> int: return roundi(float(s["kcal_eaten_today"])))))
-	var farhan: Dictionary = WorldState.survivor("farhan")
+	var farhan: Dictionary = WorldState.survivor("mechanic")
 	TickLoop.run_headless(ticks_for_hours(10.0))
 	expect("a scavenger out at mealtime eats the missed meal on return", farhan["location"] == &"base"
 		and float(farhan["kcal_eaten_today"]) > 500.0, "%d kcal" % roundi(float(farhan["kcal_eaten_today"])))
@@ -87,7 +99,7 @@ func _check_plenty_of_water() -> void:
 func _check_fatigue_and_sleep_day() -> void:
 	start(5)
 	Stores.add(WorldState.stores, "water_bottled", 100.0)
-	var arjun: Dictionary = WorldState.survivor("arjun")
+	var arjun: Dictionary = WorldState.survivor("electrician")
 	var start_fatigue: float = float(arjun["fatigue"])
 	TickLoop.run_headless(ticks_for_hours(10.0))  # to 16:00, end of the work day
 	var after_work: float = float(arjun["fatigue"])
@@ -96,14 +108,14 @@ func _check_fatigue_and_sleep_day() -> void:
 		after_work >= start_fatigue + 30.0, "%.0f -> %.0f" % [start_fatigue, after_work])
 	expect("a night's sleep brings fatigue back down by 06:00", float(arjun["fatigue"]) <= 5.0,
 		"%.0f at %s" % [float(arjun["fatigue"]), WorldState.clock_string()])
-	expect("he slept enough (no sleep debt after the night)", float(arjun["sleep_debt_h"]) == 0.0,
+	expect("they slept enough (no sleep debt after the night)", float(arjun["sleep_debt_h"]) == 0.0,
 		"debt %.1f h" % float(arjun["sleep_debt_h"]))
 
 
 func _check_night_guard_sleep() -> void:
 	start(5)
 	Stores.add(WorldState.stores, "water_bottled", 100.0)
-	var ravi: Dictionary = WorldState.survivor("ravi")
+	var ravi: Dictionary = WorldState.survivor("officer")
 	TickLoop.run_headless(WorldState.TICKS_PER_DAY)  # day 0 resting, night 0 on guard
 	var debt_after_guard: float = float(ravi["sleep_debt_h"])
 	var slept_by_day: int = 0
@@ -121,9 +133,9 @@ func _check_spoilage() -> void:
 	WorldState.survivors.clear()
 	WorldState.infrastructure["power_fail_tick"] = 0
 	TickLoop.run_headless(5 * WorldState.TICKS_PER_DAY)
-	expect("without a fridge, fresh produce spoils within 5 days in April heat", Stores.total(WorldState.stores, "fresh_produce") < 1.0
+	expect("without a fridge, fresh produce spoils within 5 days in the heat", Stores.total(WorldState.stores, "fresh_produce") < 1.0
 		and not events_named(&"food_spoiled").is_empty(), "%.0f kcal left" % Stores.total(WorldState.stores, "fresh_produce"))
-	expect("rice and dal keep", is_equal_approx(Stores.total(WorldState.stores, "rice"), 10000.0))
+	expect("rice and lentils keep", is_equal_approx(Stores.total(WorldState.stores, "rice"), 10000.0))
 	start(6)
 	WorldState.survivors.clear()
 	WorldState.infrastructure["power_fail_tick"] = 100000
@@ -139,9 +151,9 @@ func _check_heat() -> void:
 	var peak_air: float = 0.0
 	for i: int in ticks_for_hours(10.0):
 		TickLoop.step()
-		peak = maxf(peak, float(WorldState.survivor("arjun")["core_temp_c"]))
+		peak = maxf(peak, float(WorldState.survivor("electrician")["core_temp_c"]))
 		peak_air = maxf(peak_air, float(WorldState.climate["temperature_c"]))
-	expect("air temperature peaks in the high 30s °C in mid-April", peak_air > 35.0 and peak_air < 41.0, "%.1f °C" % peak_air)
+	expect("air temperature peaks in the high 30s °C in mid-April heat", peak_air > 35.0 and peak_air < 41.0, "%.1f °C" % peak_air)
 	expect("outdoor work in the afternoon heat raises core temperature", peak > 37.3, "peak %.2f °C" % peak)
 
 
@@ -181,3 +193,10 @@ func _death_summary(deaths: Dictionary) -> String:
 	for id: String in deaths:
 		parts.append("%s %.2f d (%s)" % [id, float(deaths[id]["days"]), deaths[id]["cause"]])
 	return ", ".join(parts)
+
+
+func _unique(values: Array) -> bool:
+	var seen: Dictionary = {}
+	for v: Variant in values:
+		seen[v] = true
+	return seen.size() == values.size()

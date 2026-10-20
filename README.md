@@ -1,8 +1,8 @@
 # Survival Sim — Prototype 1
 
-A realistic, strategic zombie/mutant apocalypse survival simulation set in a fictional South Indian district town, built in Godot 4 (typed GDScript). One town, five survivors, thirty days after the outbreak. Art-free: coloured tiles and text panels.
+A realistic, strategic zombie/mutant apocalypse survival simulation set in a fictional small town, built in Godot 4 (typed GDScript). One town, five survivors, thirty days after the outbreak. The town and everyone in it get new names each run, from the seed. Art-free: coloured tiles and text panels.
 
-The design lives in [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md). What was built, every design call made along the way and the balance results are in [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md).
+The player's and developer's reference (rules, numbers, commands) is [docs/GAME_GUIDE.md](docs/GAME_GUIDE.md). The design lives in [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md). What was built, every design call made along the way and the balance results are in [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md).
 
 ## Run it
 

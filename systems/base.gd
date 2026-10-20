@@ -59,8 +59,8 @@ const MOVE_SHARE: Dictionary = {
 }
 ## What the group carries first when it moves.
 const MOVE_PRIORITY: Array[String] = [
-	"antibiotics", "tourniquet", "ors", "bandages", "painkillers", "ammo", "rifle", "machete",
-	"water_boiled", "water_bottled", "packaged_food", "cooked_meal", "rice", "dal", "atta", "fresh_produce",
+	"antibiotics", "tourniquet", "rehydration_salts", "bandages", "painkillers", "ammo", "rifle", "machete",
+	"water_boiled", "water_bottled", "packaged_food", "cooked_meal", "rice", "lentils", "flour", "fresh_produce",
 	"fuel", "cooking_gas", "generator", "water_drum", "materials", "water_untreated",
 ]
 

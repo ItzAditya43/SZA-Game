@@ -9,6 +9,7 @@ const Geo := preload("res://core/geo.gd")
 const Decisions := preload("res://core/decisions.gd")
 const Difficulty := preload("res://core/difficulty.gd")
 const Traits := preload("res://core/traits.gd")
+const Names := preload("res://core/names.gd")
 
 ## Events without an hour roll at this hour.
 const DEFAULT_HOUR: int = 10
@@ -16,7 +17,7 @@ const DEFAULT_HOUR: int = 10
 const ROOF_CATCH_SHARE: float = 0.8
 ## Buckets and pans put out for a storm catch this share of the base roof's rain.
 const BUCKET_CATCH_SHARE: float = 0.3
-const FIRE_BUILDING_TYPES: Array[String] = ["kirana", "pharmacy", "hardware"]
+const FIRE_BUILDING_TYPES: Array[String] = ["grocery", "pharmacy", "hardware"]
 
 var _events: Array = []
 
@@ -54,7 +55,8 @@ func _fire(event: Dictionary) -> void:
 		if fill.is_empty():
 			return
 	WorldState.flags["events_fired"][event["id"]] = WorldState.tick
-	var story: Dictionary = {"id": event["id"], "title": event["title"], "text": String(event["text"]).format(fill)}
+	var words: Dictionary = _text_fill(fill)
+	var story: Dictionary = {"id": event["id"], "title": event["title"], "text": String(event["text"]).format(words)}
 	for effect: Dictionary in event.get("effects", []):
 		if effect.has("building") or effect.has("landmark"):
 			var pos: Vector2 = _position(effect)
@@ -68,9 +70,18 @@ func _fire(event: Dictionary) -> void:
 		var options: Array = []
 		for option: Dictionary in decision["options"]:
 			options.append(Decisions.option(StringName(option["id"]), String(option["label"]),
-				String(option.get("consequence", "")).format(fill), bool(option.get("irreversible", false))))
-		Decisions.create(&"event", String(decision["text"]).format(fill), options, {"event": event["id"], "fill": fill,
+				String(option.get("consequence", "")).format(words), bool(option.get("irreversible", false))))
+		Decisions.create(&"event", String(decision["text"]).format(words), options, {"event": event["id"], "fill": fill,
 			"unknowns": Array(decision.get("unknowns", []))})
+
+
+## What {placeholders} in event text can name: the event's own fill (a stranger),
+## this run's town ({town}) and any building by id ({school_01}).
+func _text_fill(fill: Dictionary) -> Dictionary:
+	var words: Dictionary = WorldState.names.get("buildings", {}).duplicate()
+	words["town"] = WorldState.names.get("town", "")
+	words.merge(fill, true)
+	return words
 
 
 ## Someone from the survivor pool who isn't in the group (or gone from it).
@@ -80,7 +91,7 @@ func _pick_stranger() -> Dictionary:
 	if unused.is_empty():
 		return {}
 	var row: Dictionary = unused[Rng.randi_range(0, unused.size() - 1)]
-	return {"id": row["id"], "name": row["name"], "age": int(row["age"]), "profession": String(row["profession"]).to_lower()}
+	return {"id": row["id"], "name": Names.person(String(row["id"])), "age": int(row["age"]), "profession": String(row["profession"]).to_lower()}
 
 
 func _on_decision(payload: Dictionary) -> void:

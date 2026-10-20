@@ -56,7 +56,7 @@ func _check_encounters_scale() -> void:
 		_start(101, level)
 		var system: Object = InfectedSystem.new()
 		WorldState.tick = 90
-		var s: Dictionary = WorldState.survivor("farhan")
+		var s: Dictionary = WorldState.survivor("mechanic")
 		var met: int = 0
 		for i: int in 3000:
 			s["health"] = 100.0

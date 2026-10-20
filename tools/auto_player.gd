@@ -30,9 +30,9 @@ const KCAL_PER_DAY: float = 2800.0
 const WATER_L_PER_DAY: float = 4.0
 ## Value of a kg of each item when the group needs it (scaled by need below).
 const VALUE_PER_KG: Dictionary = {
-	"antibiotics": 400.0, "tourniquet": 60.0, "ors": 40.0, "bandages": 40.0, "painkillers": 20.0,
+	"antibiotics": 400.0, "tourniquet": 60.0, "rehydration_salts": 40.0, "bandages": 40.0, "painkillers": 20.0,
 	"ammo": 30.0, "rifle": 6.0, "machete": 4.0, "water_bottled": 2.0, "packaged_food": 2.5,
-	"rice": 1.5, "dal": 1.5, "atta": 1.2, "fresh_produce": 0.3, "fuel": 0.8, "cooking_gas": 2.0,
+	"rice": 1.5, "lentils": 1.5, "flour": 1.2, "fresh_produce": 0.3, "fuel": 0.8, "cooking_gas": 2.0,
 	"materials": 1.0, "water_drum": 8.0, "generator": 1.5, "handcart": 2.0, "vehicle": 3.0, "cigarettes": 20.0,
 }
 
@@ -228,7 +228,7 @@ func _anyone_needs_care() -> bool:
 
 
 func _needs_cooking() -> bool:
-	var staples: float = Stores.total(WorldState.stores, "rice") + Stores.total(WorldState.stores, "dal") + Stores.total(WorldState.stores, "atta")
+	var staples: float = Stores.total(WorldState.stores, "rice") + Stores.total(WorldState.stores, "lentils") + Stores.total(WorldState.stores, "flour")
 	var ready: float = Stores.total(WorldState.stores, "packaged_food") + Stores.total(WorldState.stores, "fresh_produce")
 	return staples > 1000.0 and ready < KCAL_PER_DAY * WorldState.group().size() * 3.0
 
@@ -285,7 +285,7 @@ func _need(item: String) -> float:
 	var stores: Dictionary = WorldState.stores
 	match Data.entry("items", item).get("category", ""):
 		"food":
-			if item in ["rice", "dal", "atta"] and Stores.total(stores, "cooking_gas") + Stores.total(stores, "materials") < 1.0:
+			if item in ["rice", "lentils", "flour"] and Stores.total(stores, "cooking_gas") + Stores.total(stores, "materials") < 1.0:
 				return 0.2
 			return 2.0 if _food_days() < 10.0 else 0.4
 		"water":

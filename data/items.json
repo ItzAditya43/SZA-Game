@@ -4,8 +4,8 @@
   { "id": "water_untreated", "name": "Untreated water",    "category": "water",    "unit": "L",     "kg_per_unit": 1.0,     "safe": false },
 
   { "id": "rice",            "name": "Rice",               "category": "food",     "unit": "kcal",  "kcal_per_kg": 3600, "shelf_life_days": 365, "needs_cooking": true },
-  { "id": "dal",             "name": "Dal (lentils)",      "category": "food",     "unit": "kcal",  "kcal_per_kg": 3500, "shelf_life_days": 365, "needs_cooking": true },
-  { "id": "atta",            "name": "Atta (wheat flour)", "category": "food",     "unit": "kcal",  "kcal_per_kg": 3400, "shelf_life_days": 120, "needs_cooking": true },
+  { "id": "lentils",             "name": "Lentils",      "category": "food",     "unit": "kcal",  "kcal_per_kg": 3500, "shelf_life_days": 365, "needs_cooking": true },
+  { "id": "flour",            "name": "Flour", "category": "food",     "unit": "kcal",  "kcal_per_kg": 3400, "shelf_life_days": 120, "needs_cooking": true },
   { "id": "packaged_food",   "name": "Packaged food",      "category": "food",     "unit": "kcal",  "kcal_per_kg": 4500, "shelf_life_days": 270, "needs_cooking": false },
   { "id": "fresh_produce",   "name": "Fresh produce",      "category": "food",     "unit": "kcal",  "kcal_per_kg": 500,  "shelf_life_days": 4,   "needs_cooking": false },
   { "id": "cooked_meal",     "name": "Cooked meals",       "category": "food",     "unit": "kcal",  "kcal_per_kg": 1500, "shelf_life_days": 1,   "needs_cooking": false },
@@ -13,11 +13,11 @@
   { "id": "bandages",        "name": "Bandages",           "category": "medicine", "unit": "count", "kg_per_unit": 0.05 },
   { "id": "antibiotics",     "name": "Antibiotics (strip)","category": "medicine", "unit": "count", "kg_per_unit": 0.02 },
   { "id": "painkillers",     "name": "Painkillers (strip)","category": "medicine", "unit": "count", "kg_per_unit": 0.02 },
-  { "id": "ors",             "name": "ORS sachets",        "category": "medicine", "unit": "count", "kg_per_unit": 0.03 },
+  { "id": "rehydration_salts",             "name": "Rehydration salts (sachets)",        "category": "medicine", "unit": "count", "kg_per_unit": 0.03 },
   { "id": "tourniquet",      "name": "Tourniquets",        "category": "medicine", "unit": "count", "kg_per_unit": 0.1 },
 
-  { "id": "fuel",            "name": "Petrol/diesel",      "category": "fuel",     "unit": "L",     "kg_per_unit": 0.75 },
-  { "id": "cooking_gas",     "name": "Cooking gas (LPG)",  "category": "fuel",     "unit": "kg",    "kg_per_unit": 1.0 },
+  { "id": "fuel",            "name": "Fuel (gasoline/diesel)",      "category": "fuel",     "unit": "L",     "kg_per_unit": 0.75 },
+  { "id": "cooking_gas",     "name": "Cooking gas (canisters)",  "category": "fuel",     "unit": "kg",    "kg_per_unit": 1.0 },
 
   { "id": "cigarettes",      "name": "Cigarettes (packs)", "category": "comfort",  "unit": "count", "kg_per_unit": 0.03 },
 

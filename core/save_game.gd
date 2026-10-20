@@ -13,8 +13,11 @@ const SimRun := preload("res://core/sim_run.gd")
 ## let older saves be refused with a clear message.
 ## 2: stress causes, last night's sleep, planned trips, last visits, daily history
 ## and the timeline (UI/UX overhaul). Version 1 saves are migrated on load.
-const SAVE_VERSION: int = 2
-const OLDEST_LOADABLE_VERSION: int = 1
+## 3: neutral setting. Survivor, item and building ids changed (nurse, lentils,
+## grocery_01...) and names are generated per run (WorldState.names). Older saves
+## are refused with the message in read().
+const SAVE_VERSION: int = 3
+const OLDEST_LOADABLE_VERSION: int = 3
 const SAVE_DIR: String = "user://saves"
 const AUTOSAVE_SLOTS: int = 3
 

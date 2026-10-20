@@ -4,6 +4,7 @@ extends RefCounted
 ## agree on what "dehydrated" or "exhausted" means.
 
 ## Water deficit in litres.
+const Names := preload("res://core/names.gd")
 const THIRSTY_L: float = 3.0
 const DEHYDRATED_L: float = 6.0
 const COLLAPSE_DEHYDRATION_L: float = 9.0
@@ -39,7 +40,7 @@ static func new_survivor(row: Dictionary) -> Dictionary:
 	var jobs: Dictionary = row.get("jobs", {})
 	return {
 		"id": String(row["id"]),
-		"name": String(row["name"]),
+		"name": Names.person(String(row["id"])),
 		"profession": String(row["profession"]),
 		"background": String(row.get("background", "")),
 		"traits": Array(row.get("traits", [])),

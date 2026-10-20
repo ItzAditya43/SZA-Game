@@ -81,7 +81,7 @@ static func water_need(s: Dictionary) -> Dictionary:
 	var parts: Array = [part("basic need", base), part("work and activity", at_rest - base), part("heat (about %d °C)" % roundi(mean_air), total - at_rest)]
 	var illness: Dictionary = s["illness"]
 	if not illness.is_empty():
-		var loss: float = float(illness["loss_l_day"]) * (Survivors.ORS_LOSS_MULT if int(illness.get("ors_until_tick", -1)) >= WorldState.tick else 1.0)
+		var loss: float = float(illness["loss_l_day"]) * (Survivors.SALTS_LOSS_MULT if int(illness.get("salts_until_tick", -1)) >= WorldState.tick else 1.0)
 		parts.append(part("%s (fluid loss)" % illness["type"], loss))
 		total += loss
 	return breakdown(total, "L", "water a day", parts)
@@ -222,12 +222,12 @@ static func food_forecast() -> Dictionary:
 
 static func fuel_forecast() -> Dictionary:
 	var stores: Dictionary = WorldState.stores
-	var petrol: float = Stores.total(stores, "fuel")
+	var fuel: float = Stores.total(stores, "fuel")
 	var gas: float = Stores.total(stores, "cooking_gas")
 	var wood: float = Stores.total(stores, "materials")
 	var generator: bool = Stores.total(stores, "generator") >= 1.0
-	var parts: Array = [part("petrol/diesel (L)", petrol), part("cooking gas (kg)", gas), part("materials that can burn as firewood", wood)]
-	var hours: float = petrol / Infrastructure.GENERATOR_FUEL_L_PER_H
+	var parts: Array = [part("gasoline/diesel (L)", fuel), part("cooking gas (kg)", gas), part("materials that can burn as firewood", wood)]
+	var hours: float = fuel / Infrastructure.GENERATOR_FUEL_L_PER_H
 	var forecast: String = ("Generator: about %.0f hours of running." % hours) if generator else "No generator yet."
 	var out: Dictionary = breakdown(gas, "kg", "cooking gas", parts, forecast)
 	out["generator_hours"] = hours if generator else 0.0
@@ -237,7 +237,7 @@ static func fuel_forecast() -> Dictionary:
 static func medicine_forecast() -> Dictionary:
 	var stores: Dictionary = WorldState.stores
 	var parts: Array = []
-	for item: String in ["antibiotics", "bandages", "ors", "painkillers", "tourniquet"]:
+	for item: String in ["antibiotics", "bandages", "rehydration_salts", "painkillers", "tourniquet"]:
 		parts.append(part(String(Data.entry("items", item)["name"]), Stores.total(stores, item)))
 	var strips: float = Stores.total(stores, "antibiotics")
 	return breakdown(strips, "strips", "antibiotics", parts,

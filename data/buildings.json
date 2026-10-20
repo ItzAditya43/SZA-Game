@@ -1,8 +1,8 @@
 [
   { "id": "house",          "name": "House",            "count": 30, "danger": 0.15, "daily_looted_rate": 0.02, "base_defense": 10,
     "max_barricade": 40,  "water_tank_l": 1000,  "locked_chance": 0.6, "loot_table": "house",          "color": "#a8916b" },
-  { "id": "kirana",         "name": "Kirana store",     "count": 6,  "danger": 0.40, "daily_looted_rate": 0.08, "base_defense": 12,
-    "max_barricade": 40,  "water_tank_l": 0,     "locked_chance": 0.9, "loot_table": "kirana",         "color": "#d29a3c" },
+  { "id": "grocery",         "name": "Grocery store",     "count": 6,  "danger": 0.40, "daily_looted_rate": 0.08, "base_defense": 12,
+    "max_barricade": 40,  "water_tank_l": 0,     "locked_chance": 0.9, "loot_table": "grocery",         "color": "#d29a3c" },
   { "id": "pharmacy",       "name": "Pharmacy",         "count": 2,  "danger": 0.70, "daily_looted_rate": 0.15, "base_defense": 15,
     "max_barricade": 40,  "water_tank_l": 0,     "locked_chance": 0.9, "loot_table": "pharmacy",       "color": "#4fb39a",
     "loot": [
@@ -10,8 +10,8 @@
       { "item": "bandages",    "min": 5, "max": 15 },
       { "item": "painkillers", "min": 3, "max": 10 }
     ] },
-  { "id": "petrol_pump",    "name": "Petrol pump",      "count": 2,  "danger": 0.40, "daily_looted_rate": 0.10, "base_defense": 8,
-    "max_barricade": 30,  "water_tank_l": 0,     "locked_chance": 0.3, "loot_table": "petrol_pump",    "color": "#c25b4a" },
+  { "id": "fuel_station",    "name": "Fuel station",      "count": 2,  "danger": 0.40, "daily_looted_rate": 0.10, "base_defense": 8,
+    "max_barricade": 30,  "water_tank_l": 0,     "locked_chance": 0.3, "loot_table": "fuel_station",    "color": "#c25b4a" },
   { "id": "hardware",       "name": "Hardware shop",    "count": 2,  "danger": 0.15, "daily_looted_rate": 0.03, "base_defense": 15,
     "max_barricade": 50,  "water_tank_l": 0,     "locked_chance": 0.9, "loot_table": "hardware",       "color": "#8b7fc9" },
   { "id": "school",         "name": "School",           "count": 2,  "danger": 0.40, "daily_looted_rate": 0.02, "base_defense": 25,
@@ -20,8 +20,8 @@
     "max_barricade": 80,  "water_tank_l": 10000, "locked_chance": 0.0, "loot_table": "hospital",       "color": "#e8e8e8" },
   { "id": "police_station", "name": "Police station",   "count": 1,  "danger": 0.60, "daily_looted_rate": 0.05, "base_defense": 50,
     "max_barricade": 100, "water_tank_l": 2000,  "locked_chance": 0.4, "loot_table": "police_station", "color": "#4a6fb3" },
-  { "id": "water_tower",    "name": "Water tank tower", "count": 2,  "danger": 0.10, "daily_looted_rate": 0.03, "base_defense": 5,
+  { "id": "water_tower",    "name": "Water tower", "count": 2,  "danger": 0.10, "daily_looted_rate": 0.03, "base_defense": 5,
     "max_barricade": 20,  "water_tank_l": 50000, "locked_chance": 0.0, "loot_table": "water_tower",    "color": "#5aa0d9" },
-  { "id": "factory",        "name": "Factory or godown","count": 2,  "danger": 0.40, "daily_looted_rate": 0.04, "base_defense": 20,
+  { "id": "factory",        "name": "Factory or warehouse","count": 2,  "danger": 0.40, "daily_looted_rate": 0.04, "base_defense": 20,
     "max_barricade": 60,  "water_tank_l": 3000,  "locked_chance": 0.8, "loot_table": "factory",        "color": "#7a7f86" }
 ]

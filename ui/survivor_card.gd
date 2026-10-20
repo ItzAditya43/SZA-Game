@@ -146,7 +146,7 @@ static func condition_chips(s: Dictionary) -> Array:
 	if s["quarantined"]:
 		out.append(["Quarantined", "muted", "Locked away. Not working."])
 	if not s["illness"].is_empty():
-		out.append(["Ill: " + String(s["illness"]["type"]), "warn", "Losing fluids fast. ORS sachets cut the loss; keep them drinking."])
+		out.append(["Ill: " + String(s["illness"]["type"]), "warn", "Losing fluids fast. Rehydration salts cut the loss; keep them drinking."])
 	var deficit: float = float(s["water_deficit_l"])
 	if deficit >= Body.DEHYDRATED_L:
 		out.append(["Dehydrated", "danger", "Confused and losing health. Water now."])

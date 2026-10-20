@@ -104,7 +104,7 @@ func _new_building(row: Dictionary) -> Dictionary:
 			qty = lerpf(float(entry["min"]), float(entry["max"]), Rng.randf()) * Difficulty.mult("loot")
 		Stores.add(loot, item, qty)
 	return {
-		"id": String(row["id"]), "type": String(row["type"]), "name": String(row["name"]),
+		"id": String(row["id"]), "type": String(row["type"]), "name": String(WorldState.names.get("buildings", {}).get(row["id"], row["id"])),
 		"x": int(row["x"]), "y": int(row["y"]), "w": int(row["w"]), "h": int(row["h"]),
 		"loot": loot, "start_loot": Stores.snapshot(loot),
 		"tank_l": float(type.get("water_tank_l", 0.0)), "tank_start_l": float(type.get("water_tank_l", 0.0)),

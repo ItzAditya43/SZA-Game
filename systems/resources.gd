@@ -31,7 +31,7 @@ const DEFAULT_POLICIES: Dictionary = {
 }
 
 const MEAL_MINUTES: Array[int] = [8 * 60, 13 * 60, 20 * 60]
-## Eaten first to last. Raw staples (rice, dal, atta) must be cooked first.
+## Eaten first to last. Raw staples (rice, lentils, flour) must be cooked first.
 const EATING_ORDER: Array[String] = ["cooked_meal", "fresh_produce", "packaged_food"]
 ## A hot cooked meal eases stress; dry packaged food does not.
 const COOKED_MEAL_STRESS_RELIEF: float = 2.0
@@ -51,7 +51,7 @@ const FRIDGE_C: float = 8.0
 
 # --- Cooking (the cook job) ---
 const COOK_KCAL_PER_HOUR: float = 6000.0
-## Per 1,000 kcal of rice/dal/atta: about 0.55 L of water and 0.1 kg of LPG per kg cooked.
+## Per 1,000 kcal of rice/lentils/flour: about 0.55 L of water and 0.1 kg of cooking gas per kg cooked.
 const COOK_WATER_L_PER_1000_KCAL: float = 0.6
 const COOK_GAS_KG_PER_1000_KCAL: float = 0.03
 ## Without gas, materials burn as firewood.
@@ -59,11 +59,11 @@ const COOK_WOOD_PER_1000_KCAL: float = 0.3
 ## Cooked meals keep a day, so cook no more than a day ahead.
 const COOKED_STOCK_DAYS: float = 1.0
 ## Atta first: it keeps least well.
-const STAPLES: Array[String] = ["atta", "rice", "dal"]
+const STAPLES: Array[String] = ["flour", "rice", "lentils"]
 
 # --- Boiling (the boil_water order) ---
 const BOIL_L_PER_HOUR: float = 40.0
-## Boiling 10 L takes about 0.15 kg of LPG, or one unit of materials burned as firewood
+## Boiling 10 L takes about 0.15 kg of cooking gas, or one unit of materials burned as firewood
 ## (the spec's "1 unit of fuel per 10 litres").
 const BOIL_GAS_KG_PER_10L: float = 0.15
 const BOIL_WOOD_PER_10L: float = 1.0

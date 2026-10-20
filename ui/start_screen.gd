@@ -1,6 +1,8 @@
 extends PanelContainer
 ## The new-run screen: difficulty, seed and the five survivors (picked from the
-## pool of 12, "Random 5", or the Default five), plus Continue and Load.
+## pool of 12, "Random 5", or the Default five), plus Continue and Load. Names
+## (the town's and everyone's) come from the seed, so they're previewed here and
+## change when the seed does; "New world" rolls another seed.
 ## The main scene acts on the signals.
 
 signal start_requested(difficulty: String, run_seed: int, roster: Array)
@@ -9,6 +11,7 @@ signal load_list_requested
 
 const Difficulty := preload("res://core/difficulty.gd")
 const SaveGame := preload("res://core/save_game.gd")
+const Names := preload("res://core/names.gd")
 
 var _choice: String = Difficulty.DEFAULT_ID
 var _buttons: Dictionary = {}  # difficulty id -> Button
@@ -19,6 +22,9 @@ var _roster_label: Label
 var _start: Button
 var _continue: Button
 var _random_roster: bool = false
+var _intro: Label
+## The seed used when the field is blank; rolled each time the screen opens.
+var _world_seed: int = 0
 
 
 func _ready() -> void:
@@ -35,11 +41,10 @@ func _ready() -> void:
 	title.theme_type_variation = "TitleLabel"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	var intro: Label = Label.new()
-	intro.text = "A district town in South India, mid-April. Five survivors. Thirty days."
-	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intro.theme_type_variation = "MutedLabel"
-	column.add_child(intro)
+	_intro = Label.new()
+	_intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_intro.theme_type_variation = "MutedLabel"
+	column.add_child(_intro)
 
 	var saves_row: HBoxContainer = HBoxContainer.new()
 	saves_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -84,7 +89,7 @@ func _ready() -> void:
 			var trait_row: Dictionary = Data.entry("traits", id)
 			traits.append(String(trait_row["name"]))
 			trait_texts.append("%s: %s" % [trait_row["name"], trait_row["text"]])
-		pick.text = "%s, %d — %s\n%s" % [row_data["name"], int(row_data["age"]), row_data["profession"], ", ".join(traits)]
+		pick.set_meta("traits", ", ".join(traits))
 		var skills: Dictionary = row_data["skills"]
 		pick.tooltip_text = "%s\nScavenging %d · Medicine %d · Combat %d\n%s" % [row_data.get("background", ""),
 			int(skills["scavenging"]), int(skills["medicine"]), int(skills["combat"]), "\n".join(trait_texts)]
@@ -99,12 +104,15 @@ func _ready() -> void:
 	var seed_row: HBoxContainer = HBoxContainer.new()
 	column.add_child(seed_row)
 	var seed_label: Label = Label.new()
-	seed_label.text = "Seed (blank for a new world):"
+	seed_label.text = "World seed:"
 	seed_row.add_child(seed_label)
 	_seed_edit = LineEdit.new()
-	_seed_edit.placeholder_text = "random"
 	_seed_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_seed_edit.text_changed.connect(func(_text: String) -> void: _refresh_names())
 	seed_row.add_child(_seed_edit)
+	seed_row.add_child(_button("New world", func() -> void:
+		_seed_edit.text = ""
+		_roll_world()))
 
 	_start = _button("Start", _on_start)
 	_start.custom_minimum_size = Vector2(0, 42)
@@ -112,12 +120,14 @@ func _ready() -> void:
 	column.add_child(_start)
 	_pick(_choice)
 	_set_default()
+	_roll_world()
 
 
 func open() -> void:
 	if _description == null:
 		_ready()
 	_continue.disabled = SaveGame.latest() == ""
+	_roll_world()
 	visible = true
 	_center.call_deferred()
 
@@ -168,9 +178,29 @@ func _refresh_roster() -> void:
 	_start.disabled = count != size
 
 
-func _on_start() -> void:
+## A fresh world for a blank seed field: a new town and new names.
+func _roll_world() -> void:
+	_world_seed = int(Time.get_unix_time_from_system()) + Time.get_ticks_usec() % 100000
+	_seed_edit.placeholder_text = "%d (blank = this one)" % _world_seed
+	_refresh_names()
+
+
+func _seed() -> int:
 	var text: String = _seed_edit.text.strip_edges()
-	var run_seed: int = text.to_int() if text.is_valid_int() else int(Time.get_unix_time_from_system())
+	return text.to_int() if text.is_valid_int() else _world_seed
+
+
+## Shows the town and the people as this seed names them.
+func _refresh_names() -> void:
+	var names: Dictionary = Names.generate(_seed())
+	_intro.text = "%s, a small town in the hottest weeks of the year. Five survivors. Thirty days." % names["town"]
+	for row_data: Dictionary in Data.table("survivors"):
+		var pick: CheckBox = _picks[row_data["id"]]
+		pick.text = "%s, %d — %s\n%s" % [names["people"][row_data["id"]], int(row_data["age"]), row_data["profession"], pick.get_meta("traits")]
+
+
+func _on_start() -> void:
+	var run_seed: int = _seed()
 	visible = false
 	start_requested.emit(_choice, run_seed, ["random"] if _random_roster else _chosen())
 

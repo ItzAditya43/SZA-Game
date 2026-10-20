@@ -5,6 +5,7 @@ extends RefCounted
 
 const SimSystem := preload("res://core/sim_system.gd")
 const Difficulty := preload("res://core/difficulty.gd")
+const Names := preload("res://core/names.gd")
 
 ## Tick order. Time goes first so every later system sees this tick's clock and
 ## temperature. Jobs runs before Infected so encounters roll on this tick's
@@ -31,6 +32,7 @@ static func start(run_seed: int, difficulty_id: String = Difficulty.DEFAULT_ID, 
 	TickLoop.reset()
 	Rng.set_seed(run_seed)
 	WorldState.reset(run_seed)
+	WorldState.names = Names.generate(run_seed)
 	WorldState.difficulty = Difficulty.preset(difficulty_id)
 	WorldState.flags["roster"] = pick_roster(roster)
 	EventBus.clear_log()
@@ -42,7 +44,7 @@ static func start(run_seed: int, difficulty_id: String = Difficulty.DEFAULT_ID, 
 	for system: SimSystem in systems:
 		system.setup()
 	EventBus.emit_event(&"run_started", {"seed": run_seed, "difficulty": WorldState.difficulty["id"],
-		"text": "Day 0 of the outbreak. %s, seed %d." % [WorldState.difficulty["name"], run_seed]})
+		"text": "Day 0 of the outbreak in %s. %s, seed %d." % [WorldState.names["town"], WorldState.difficulty["name"], run_seed]})
 
 
 static func pick_roster(roster: Array) -> Array:

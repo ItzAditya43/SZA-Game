@@ -8,7 +8,7 @@ const BaseSystem := preload("res://systems/base.gd")
 const Attention := preload("res://systems/attention.gd")
 
 const PROFESSIONS: Array[String] = ["Nurse", "Electrician", "Mechanic", "Farmer", "School teacher", "Cook",
-	"Police constable", "Pharmacist", "Auto-rickshaw driver", "College student", "Construction worker", "Retired soldier"]
+	"Police officer", "Pharmacist", "Taxi driver", "College student", "Construction worker", "Retired soldier"]
 
 
 func run_checks() -> void:
@@ -82,7 +82,7 @@ func _check_quick_barricade() -> void:
 	Stores.add(WorldState.stores, "materials", 100.0)
 	var building: Dictionary = WorldState.building(WorldState.base["building"])
 	var cap: float = float(Data.entry("buildings", String(building["type"]))["max_barricade"])
-	EventBus.emit_event(&"command_set_job", {"survivor": "arjun", "shift": &"day", "job": &"quick_fortify"})
+	EventBus.emit_event(&"command_set_job", {"survivor": "electrician", "shift": &"day", "job": &"quick_fortify"})
 	var materials: float = Stores.total(WorldState.stores, "materials")
 	TickLoop.run_headless(12 * 6)
 	var quick_points: float = float(building["barricade"])
@@ -113,7 +113,7 @@ func _check_handcart_and_vehicle() -> void:
 	EventBus.emit_event(&"command_move_base", {"building": "house_20", "hide_hours": 0.0})
 	var moved: Dictionary = events_named(&"base_moved")[0]["payload"]
 	expect("a vehicle is useless without a driver in the group", not String(moved["text"]).contains("by vehicle"), moved["text"])
-	start(542, ["murugan", "meera", "arjun", "lakshmi", "ravi"])
+	start(542, ["cabbie", "nurse", "electrician", "farmer", "officer"])
 	_quiet()
 	Stores.add(WorldState.stores, "vehicle", 1.0)
 	Stores.add(WorldState.stores, "fuel", 20.0)
@@ -143,9 +143,9 @@ func _check_caches() -> void:
 	expect("a badly hidden cache at a pharmacy is often found by others within 5 days", lost >= 5 and lost <= 30, "%d of 40 lost" % lost)
 	start(560)
 	_quiet()
-	WorldState.caches = [{"id": 1, "building": "kirana_06", "items": {"antibiotics": [{"qty": 3.0, "age_days": 0.0}]}, "quality": 0.9, "tick": 0}]
-	WorldState.building("kirana_06")["loot"] = {}
-	EventBus.emit_event(&"command_set_job", {"survivor": "farhan", "shift": &"day", "job": &"scavenge", "target": "kirana_06"})
+	WorldState.caches = [{"id": 1, "building": "grocery_06", "items": {"antibiotics": [{"qty": 3.0, "age_days": 0.0}]}, "quality": 0.9, "tick": 0}]
+	WorldState.building("grocery_06")["loot"] = {}
+	EventBus.emit_event(&"command_set_job", {"survivor": "mechanic", "shift": &"day", "job": &"scavenge", "target": "grocery_06"})
 	TickLoop.run_headless(12 * 6)
 	expect("a survivor sent back to the site digs the cache out", WorldState.caches.is_empty()
 		and Stores.total(WorldState.stores, "antibiotics") >= 2.0)
@@ -205,26 +205,26 @@ func _check_pool_and_traits() -> void:
 	var known: Array = Data.table("traits").map(func(t: Dictionary) -> String: return t["id"])
 	expect("everyone has 1-2 traits, all defined in data/traits.json", pool.all(func(row: Dictionary) -> bool:
 		return row["traits"].size() >= 1 and row["traits"].size() <= 2 and row["traits"].all(func(t: String) -> bool: return known.has(t))))
-	start(590, ["raju", "imran", "selvi", "thomas", "divya"])
-	var raju: Dictionary = WorldState.survivor("raju")
-	var imran: Dictionary = WorldState.survivor("imran")
+	start(590, ["builder", "pharmacist", "chef", "veteran", "student"])
+	var raju: Dictionary = WorldState.survivor("builder")
+	var imran: Dictionary = WorldState.survivor("pharmacist")
 	expect("traits change what people can do: a strong back carries 30% more", is_equal_approx(Traits.mult(raju, "carry_kg_mult"), 1.3))
 	expect("a squeamish pharmacist treats wounds as if 3 points less skilled", is_equal_approx(Body.skill(imran, "medicine"), 3.0))
-	start(591, ["farhan", "meera", "arjun", "lakshmi", "ravi"])
+	start(591, ["mechanic", "nurse", "electrician", "farmer", "officer"])
 	_quiet()
 	WorldState.stores.erase("cigarettes")
-	var farhan: Dictionary = WorldState.survivor("farhan")
-	var meera: Dictionary = WorldState.survivor("meera")
+	var farhan: Dictionary = WorldState.survivor("mechanic")
+	var meera: Dictionary = WorldState.survivor("nurse")
 	TickLoop.run_headless(2 * WorldState.TICKS_PER_DAY)
 	expect("a smoker without cigarettes gets more stressed than a non-smoker", farhan["craving"]
 		and float(farhan["stress"]) - 62.0 > float(meera["stress"]) - 45.0 + 5.0,
-		"Farhan %.0f (from 62), Meera %.0f (from 45)" % [float(farhan["stress"]), float(meera["stress"])])
+		"smoker %.0f (from 62), non-smoker %.0f (from 45)" % [float(farhan["stress"]), float(meera["stress"])])
 
 
 func _check_rosters() -> void:
 	start(600)
 	expect("the default roster is the original five", WorldState.survivors.map(func(s: Dictionary) -> String: return s["id"])
-		== ["meera", "arjun", "farhan", "lakshmi", "ravi"])
+		== ["nurse", "electrician", "mechanic", "farmer", "officer"])
 	start(601, ["random"])
 	var first: Array = WorldState.survivors.map(func(s: Dictionary) -> String: return s["id"])
 	start(601, ["random"])

@@ -24,6 +24,9 @@ var survivors: Array = []
 var buildings: Array = []
 ## Terrain grid and landmarks of the town map (systems/town.gd).
 var town: Dictionary = {}
+## This run's names, rolled from the seed (core/names.gd): {"town": String,
+## "people": {survivor id: name}, "buildings": {building id: name}}.
+var names: Dictionary = {}
 ## The 4 x 4 infected zones (systems/infected.gd).
 var zones: Array = []
 ## The group's base: building, barricades, alert level (systems/base.gd).
@@ -62,6 +65,7 @@ func reset(new_seed: int) -> void:
 	survivors = []
 	buildings = []
 	town = {}
+	names = {}
 	zones = []
 	base = {}
 	stores = {}
@@ -81,7 +85,7 @@ func reset(new_seed: int) -> void:
 
 ## Every field that makes up the world, for saving. Keep in step with reset().
 const SAVED_FIELDS: Array[String] = [
-	"run_seed", "tick", "survivors", "buildings", "town", "zones", "base", "stores", "attention", "caches",
+	"run_seed", "tick", "survivors", "buildings", "town", "names", "zones", "base", "stores", "attention", "caches",
 	"climate", "infrastructure", "policies", "pending_decisions", "flags", "stats", "outcome", "next_id",
 	"difficulty", "factions", "region",
 ]

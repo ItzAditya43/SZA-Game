@@ -27,9 +27,9 @@ func _check_zones() -> void:
 	var hospital: int = Geo.zone_index_at(Geo.building_center_m(WorldState.building("hospital_01")))
 	var bus_stand: int = Geo.zone_index_at(Vector2(34, 34) * Geo.tile_m())
 	var quiet: int = Geo.zone_index_at(Geo.base_center_m())
-	expect("they are concentrated at the hospital and the bus stand/market, thin at the base",
+	expect("they are concentrated at the hospital and the bus station/market, thin at the base",
 		counts[hospital] > 1000 and counts[bus_stand] > 1000 and counts[quiet] < 300,
-		"hospital %d, bus stand %d, base zone %d" % [counts[hospital], counts[bus_stand], counts[quiet]])
+		"hospital %d, bus station %d, base zone %d" % [counts[hospital], counts[bus_stand], counts[quiet]])
 
 
 func _check_population_curve() -> void:
@@ -91,20 +91,20 @@ func _check_activity() -> void:
 func _check_encounter_rates() -> void:
 	start(25)
 	var system: Object = InfectedSystem.new()
-	var zone: int = 10  # bus stand: dense
+	var zone: int = 10  # bus station: dense
 	var night: int = _count_encounters(system, zone, 90, 30.0)
 	var midday: int = _count_encounters(system, zone, 48, 38.0)
 	var quiet_zone: int = _count_encounters(system, 0, 90, 30.0)
 	expect("encounters are far likelier at night than in the midday heat",
 		night > midday * 3, "night %d vs midday %d per %d ticks outside" % [night, midday, TRIALS])
 	expect("and far likelier in a dense zone than a quiet one", night > quiet_zone * 3,
-		"bus stand %d vs quiet corner %d" % [night, quiet_zone])
+		"bus station %d vs quiet corner %d" % [night, quiet_zone])
 
 
 func _count_encounters(system: Object, zone: int, at_tick: int, temp: float) -> int:
 	WorldState.tick = at_tick
 	WorldState.climate["temperature_c"] = temp
-	var s: Dictionary = WorldState.survivor("farhan")
+	var s: Dictionary = WorldState.survivor("mechanic")
 	var count: int = 0
 	for i: int in TRIALS:
 		_reset(s)
@@ -129,7 +129,7 @@ func _check_fight_outcomes() -> void:
 	expect("all five outcomes occur: avoided, fought off, injured, bitten, killed",
 		weak.has(&"avoided") and weak.has(&"fought_off") and weak.has(&"injured") and weak.has(&"bitten") and weak.has(&"killed"))
 	captured.clear()
-	var s: Dictionary = WorldState.survivor("ravi")
+	var s: Dictionary = WorldState.survivor("officer")
 	_reset(s)
 	s["skills"]["scavenging"] = 1
 	s["weapon"] = "rifle"
@@ -143,7 +143,7 @@ func _check_fight_outcomes() -> void:
 
 
 func _outcomes(system: Object, combat: int, weapon: String) -> Dictionary:
-	var s: Dictionary = WorldState.survivor("arjun")
+	var s: Dictionary = WorldState.survivor("electrician")
 	var tally: Dictionary = {}
 	for i: int in TRIALS:
 		_reset(s)
@@ -164,7 +164,7 @@ func _check_turning_time() -> void:
 		start(300 + trial)
 		_set_all_rest()
 		Stores.add(WorldState.stores, "water_bottled", 300.0)
-		var s: Dictionary = WorldState.survivor("arjun")
+		var s: Dictionary = WorldState.survivor("electrician")
 		var location: String = ["neck", "torso", "arm", "leg"][trial % 4]
 		s["injuries"].append(Body.new_injury(&"bite", location, 0.05))
 		s["stress"] = 0.0  # tells the group rather than hiding it
@@ -196,7 +196,7 @@ func _check_hidden_bite() -> void:
 		start(400 + trial)
 		_set_all_rest()
 		Stores.add(WorldState.stores, "water_bottled", 300.0)
-		var s: Dictionary = WorldState.survivor("farhan")
+		var s: Dictionary = WorldState.survivor("mechanic")
 		s["stress"] = 100.0
 		s["injuries"].append(Body.new_injury(&"bite", "arm", 0.05))
 		TickLoop.step()

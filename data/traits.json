@@ -6,7 +6,7 @@
     "text": "Years of work in the sun: needs less extra water in the heat and heats up more slowly.",
     "effects": { "water_heat_mult": 0.6, "heat_gain_mult": 0.6 } },
   { "id": "smoker", "name": "Smoker",
-    "text": "Smokes a pack a day. Without cigarettes, stress climbs fast. Cigarettes turn up in kirana stores and houses.",
+    "text": "Smokes a pack a day. Without cigarettes, stress climbs fast. Cigarettes turn up in grocery stores and houses.",
     "effects": { "cigarettes_per_day": 1, "stress_without_cigarettes_per_day": 8 } },
   { "id": "handles_gore", "name": "Handles gore",
     "text": "Has seen worse. Half the stress from deaths and wounds.",

@@ -105,7 +105,7 @@ const ILLNESSES: Array[Dictionary] = [
 	{"type": "cholera", "weight": 0.2, "loss_l_day": 6.0, "days": Vector2i(3, 5), "damage_per_day": 10.0},
 ]
 ## Oral rehydration salts cut the effective fluid loss to this fraction for a day.
-const ORS_LOSS_MULT: float = 0.4
+const SALTS_LOSS_MULT: float = 0.4
 
 # --- Pathogen ---
 ## Incubation by bite location (hours); bites nearer the brain progress faster.
@@ -281,7 +281,7 @@ func _medic_at_base() -> Dictionary:
 
 
 ## First aid anyone can give at base (a dressing on a bleeding wound), plus what
-## only a medic on the treat job does: clean, stitch, painkillers, ORS.
+## only a medic on the treat job does: clean, stitch, painkillers, rehydration salts.
 func _treat(s: Dictionary, medic: Dictionary) -> void:
 	if s["location"] != &"base":
 		return
@@ -306,10 +306,10 @@ func _treat(s: Dictionary, medic: Dictionary) -> void:
 			s["stress"] = maxf(0.0, float(s["stress"]) - PAINKILLER_STRESS_RELIEF)
 			Traits.note_stress(s, "painkillers", float(s["stress"]) - eased)
 	var illness: Dictionary = s["illness"]
-	if not illness.is_empty() and int(illness.get("ors_until_tick", -1)) < WorldState.tick and Stores.total(WorldState.stores, "ors") >= 1.0:
+	if not illness.is_empty() and int(illness.get("salts_until_tick", -1)) < WorldState.tick and Stores.total(WorldState.stores, "rehydration_salts") >= 1.0:
 		# Anyone can mix a sachet of oral rehydration salts.
-		Stores.take(WorldState.stores, "ors", 1.0)
-		illness["ors_until_tick"] = WorldState.tick + WorldState.TICKS_PER_DAY
+		Stores.take(WorldState.stores, "rehydration_salts", 1.0)
+		illness["salts_until_tick"] = WorldState.tick + WorldState.TICKS_PER_DAY
 
 
 func _wounds(s: Dictionary, medic: Dictionary) -> void:
@@ -395,8 +395,8 @@ func _illness(s: Dictionary) -> void:
 	var illness: Dictionary = s["illness"]
 	if illness.is_empty():
 		return
-	var on_ors: bool = int(illness.get("ors_until_tick", -1)) >= WorldState.tick
-	var loss: float = float(illness["loss_l_day"]) * (ORS_LOSS_MULT if on_ors else 1.0)
+	var on_salts: bool = int(illness.get("salts_until_tick", -1)) >= WorldState.tick
+	var loss: float = float(illness["loss_l_day"]) * (SALTS_LOSS_MULT if on_salts else 1.0)
 	s["water_deficit_l"] = float(s["water_deficit_l"]) + loss * TICK_DAYS
 	_damage(s, illness["type"], float(illness["damage_per_day"]) * TICK_DAYS)
 	illness["hours_left"] = float(illness["hours_left"]) - TICK_HOURS

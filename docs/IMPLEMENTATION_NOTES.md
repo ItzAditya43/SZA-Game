@@ -287,6 +287,29 @@ The 240-game batch (20 games per difficulty and strategy) is byte-identical befo
 - **Some things the screenshot tool can't show:** drag and drop, hover tooltips and keyboard shortcuts were checked in code and in the headless build test, not by a person using a mouse.
 - **The map is square,** so on 16:9 screens the building card sits in the space to its right. A 4:3 window overlaps the card onto the map.
 
+## Neutral setting (branch `feat/neutral-setting`, from `feat/ui-ux`)
+
+The designer asked for the game not to read as set in one country, with names random each run. The rules and numbers are unchanged. The 240-game balance batch (20 games per difficulty and strategy) is byte-identical to `feat/ui-ux`.
+
+- **Names per run.** `core/names.gd` rolls the town's name, a name for each of the 12 people in the pool and every building's name from mixed pools in `data/names.json`.
+  - It uses `Rng.stream(seed, "names")`, a separate generator, so the simulation's random sequence is untouched.
+  - Names are stored in `WorldState.names`, which is saved.
+  - The start screen previews names for the seed in the field, or for a fresh seed ("New world").
+  - Event text can use `{town}` and `{building_id}`.
+- **Ids renamed.**
+  - Survivors are now named by profession: `nurse`, `electrician`, `mechanic`, `farmer`, `officer`, `teacher`, `chef`, `pharmacist`, `cabbie`, `student`, `builder`, `veteran`.
+  - Items: `dal` → `lentils`, `atta` → `flour`, `ors` → `rehydration_salts`.
+  - Building types: `kirana` → `grocery`, `petrol_pump` → `fuel_station`.
+  - Building names left `town_layout.json`.
+- **Text.**
+  - Events say "the authorities", "bus station" and "summer storm".
+  - Professions: "Police officer", "Taxi driver".
+  - Backgrounds name no places and use no gendered pronouns, since names (and so genders) are random.
+  - GAME_DESIGN.md: "monsoon" became "rainy season" and the setting is "a fictional town in a hot climate"; every rule and number is the same.
+- **Saves.** Version 3. Older saves are refused with a clear message (the ids changed).
+- **Not changed.** The `prompts/` folder (the designer's original briefs) still describes the old setting.
+- **Reference.** `docs/GAME_GUIDE.md`: the full player and developer reference, with commands.
+
 ## Spec ambiguities and how they were resolved
 
 Each was settled by the realism rules or the simplest option that keeps the architecture intact. Every one is cheap to change.

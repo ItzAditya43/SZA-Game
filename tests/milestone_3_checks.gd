@@ -105,8 +105,8 @@ func _check_pharmacy_drains() -> void:
 
 func _check_scavenge_trip_near() -> void:
 	start(14)
-	var farhan: Dictionary = WorldState.survivor("farhan")
-	var shop: Dictionary = WorldState.building("kirana_06")
+	var farhan: Dictionary = WorldState.survivor("mechanic")
+	var shop: Dictionary = WorldState.building("grocery_06")
 	shop["locked"] = true
 	var shop_food: float = Stores.food_kcal(shop["loot"])
 	var home_food: float = Stores.food_kcal(WorldState.stores)
@@ -120,7 +120,7 @@ func _check_scavenge_trip_near() -> void:
 	var taken: float = shop_food - Stores.food_kcal(shop["loot"])
 	expect("the food they bring home is taken from the building's finite loot",
 		taken > 1000.0 and Stores.food_kcal(WorldState.stores) > home_food, "%d kcal taken" % roundi(taken))
-	expect("Farhan is back at base afterwards", farhan["location"] == &"base")
+	expect("the scavenger is back at base afterwards", farhan["location"] == &"base")
 
 
 func _check_scavenge_trip_far() -> void:
@@ -132,7 +132,7 @@ func _check_scavenge_trip_far() -> void:
 		if d > best:
 			best = d
 			farthest = b
-	EventBus.emit_event(&"command_set_job", {"survivor": "farhan", "shift": &"day", "job": &"scavenge", "target": farthest["id"]})
+	EventBus.emit_event(&"command_set_job", {"survivor": "mechanic", "shift": &"day", "job": &"scavenge", "target": farthest["id"]})
 	TickLoop.run_headless(ticks_for_hours(12.0))
 	var returned: Array[Dictionary] = events_named(&"scavenge_returned")
 	var hours: float = float(returned[0]["payload"]["hours"]) if not returned.is_empty() else -1.0
