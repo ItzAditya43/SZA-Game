@@ -1,52 +1,93 @@
-# Survival Sim — Prototype 1
+# SZA: a realistic zombie survival strategy sim
 
-A realistic, strategic zombie/mutant apocalypse survival simulation set in a fictional small town, built in Godot 4 (typed GDScript). One town, five survivors, thirty days after the outbreak. The town and everyone in it get new names each run, from the seed. Art-free: coloured tiles and text panels.
+Lead five survivors through the first thirty days of an outbreak in a small town. You don't steer anyone around: you give orders and make the hard calls, and the world keeps running whether you're watching or not.
 
-The player's and developer's reference (rules, numbers, commands) is [docs/GAME_GUIDE.md](docs/GAME_GUIDE.md). The design lives in [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md). What was built, every design call made along the way and the balance results are in [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md).
+The infected are **sick living people**, not the undead. They tire in the midday heat, hunt at night, are drawn by noise and light, and slowly die off. Water is counted in litres, food in kilocalories, blood loss in millilitres. Nothing is a magic health bar.
 
-## Run it
+![The town at noon](docs/screenshots/graphics/day01_noon_zoom_1920x1080.png)
 
-Needs Godot 4.3 or later (built and tested on 4.7.2). From this folder:
+## What you do
+
+- **Assign jobs** by day and by night: scavenge, guard, fortify, collect water, cook, treat the hurt, rest.
+- **Plan scavenging trips:** who goes, when they leave (midday is safest, night is deadly) and what they bring back first. The planner shows the return time, how much they can carry and the chance of getting hurt, worked out with the game's own rules.
+- **Keep the base alive** after the power fails (day 3–6) and the taps run dry (day 7–12). Ration food and water, boil what you collect, decide whether the generator's light is worth the attention it draws.
+- **Make the hard calls.** Someone is bitten: quarantine, watch, send away, or end it. A stranger at the gate. Antibiotics for a wound now, or kept for something worse.
+- **Stay hidden or keep moving.** A base that stays put builds up attention (voices, smoke, hammering, light) and draws night attacks. Moving costs supplies, barricades and nerves.
+
+Every number explains itself: hover it to see what it's made of and where it's heading.
+
+| | |
+| --- | --- |
+| ![Night: the generator's light spills down the lanes](docs/screenshots/graphics/day05_night_generator_1920x1080.png) | ![Rain on the town](docs/screenshots/graphics/day15_rain_1920x1080.png) |
+| **Night.** Light from the base spills down the lanes and shows why it draws the infected. | **Weather.** Rain fills the tanks and wets the roads. Midday heat shimmers. |
+| ![Planning a scavenging trip](docs/screenshots/graphics/planner.png) | ![A decision](docs/screenshots/graphics/decision.png) |
+| **Trip planner.** Who goes, when, what to bring back, and the real risk. | **Decisions.** What each choice does, what nobody can know yet, and what can't be undone. |
+
+## Features
+
+- **A living town:** about 50 buildings with finite loot that other (unseen) survivors strip day by day; 16 zones of infected that grow, wander towards noise and die off.
+- **Bodies and minds:** thirst, hunger, sleep, body heat, bleeding, wound infection to sepsis, waterborne illness, and stress that makes people refuse work or leave.
+- **Twelve survivors** with real jobs and traits (smoker, light sleeper, strong back, squeamish…). Names, and the town's name, are new every run.
+- **Twelve events with causes:** lockdown, panic buying, a relief camp that falls, a market fire, heat waves, storms, a stranger at the gate.
+- **Three difficulties:** the same realistic rules, a bigger and harsher world.
+- **Graphics and sound:**
+  - sprite-drawn town with day/night lighting, rain, heat shimmer, smoke, and weeds that creep over the roads
+  - a fog of what your group has seen
+  - ambience and sound effects
+  - Low/Medium/High quality, and Reduce motion
+- **Saves:** autosave every dawn and quick save/load. Runs are seeded: the same seed and choices replay exactly.
+
+## Play it
+
+You need [Godot 4.3 or later](https://godotengine.org/download) (tested on 4.7.2). From this folder:
+
+```
+godot --headless --import      # once, on a fresh clone
+godot                          # start screen: difficulty, survivors, seed
+godot -- --difficulty=easy --seed=42   # straight into a run
+```
+
+**Controls:**
+
+| Input | Action |
+| --- | --- |
+| Space | pause / resume |
+| 1 / 2 / 3 | speed: 1× (a day in 72 s), 3×, 10× |
+| Mouse wheel / drag / WASD | zoom and move the map |
+| Click a building | see what's inside; plan a trip or move there |
+| Tab | hide the side panel |
+| Esc | menu: save, load, settings, new run |
+| Ctrl+S / Ctrl+L | quick save / load |
+| ? | every key |
+
+**New to it?** Start on Easy. Grab the pharmacy before it's raided, fill every container before the taps fail, and send scavengers out at midday.
+
+## For developers
 
 | What | Command |
 | --- | --- |
-| Play | `godot` (opens on the start screen: difficulty, your five survivors, Continue or Load) |
-| Play straight into a run | `godot -- --difficulty=hard --seed=42` |
-| Open in the editor | `godot -e` |
-| All tests | `bash tools/run_tests.sh` |
-| One test suite | `godot --headless --script res://tests/test_milestone_4.gd` |
-| One headless run, told as a story | `godot --headless --script res://tools/headless_runner.gd -- --difficulty=normal --seed=7 --days=30 --strategy=balanced --verbose=1` |
-| Balance batch (100 games per strategy and difficulty) | `godot --headless --script res://tools/headless_runner.gd -- --games=100 --difficulty=all --strategy=all` |
+| All tests (175 checks) | `bash tools/run_tests.sh` |
+| One run with no UI, told as a story | `godot --headless --script res://tools/headless_runner.gd -- --difficulty=normal --seed=7 --days=30 --strategy=balanced --verbose=1` |
+| Balance batch (auto-player) | `godot --headless --script res://tools/headless_runner.gd -- --games=40 --difficulty=all --strategy=all` |
 | Frames per second for each graphics preset | `godot res://tools/fps_bench.tscn -- --size=1920x1080` |
+| Screenshot | `godot res://tools/screenshot.tscn -- --difficulty=normal --seed=3 --hours=48 --zoom=2 --out=/tmp/shot.png` |
 | Re-cut the sprite sheet / regenerate sounds | `python3 tools/slice_sheet.py assets/source/sheet_v1.png assets/sprites` / `python3 tools/make_sounds.py` |
-| Screenshot of the game screen | `godot res://tools/screenshot.tscn -- --difficulty=normal --seed=3 --hours=48 --tab=2 --out=/tmp/shot.png` |
-
-On a fresh clone, run `godot --headless --import` once first.
-
-## How to play
-
-You are the group's leader. You don't walk anyone around; you give orders and decide. Press **?** in game for every key.
-
-- **Top bar:** day and clock, date, temperature and phase, speed (Space pauses, 1/2/3 for 1×/3×/10×; at 1× a day takes 72 seconds), whether power, taps and phones still work, and **Alerts** (red when something is urgent; click it for the list and to choose what pauses the game).
-- **Map (centre):** the 2 km town, drawn with sprites, lit by the time of day, with weather and sound. Scroll to zoom, drag or WASD to move. Click a building for its card: what's inside, danger, last visit, and buttons to plan a trip or move the base there. The bar above the map switches one layer at a time (infected, noise, light at night, smell and wind, attention, disease risk), each with a legend.
-- **Side panel (Tab hides it):** People (who does which job by day and night; drag a name to another job; each card shows water, food, sleep and stress, click it for the causes), Stores (how many days water, food, gas and medicine last), Base (defense, attention, standing orders), Log (filterable; click a line to find it on the map) and Stats (charts by day).
-- **Hover any number** to see what makes it up and where it's heading.
-- **Planning a trip:** pick who goes, when (now, midday, dusk, night) and what to bring back first. The planner shows the return time, how much they can carry and the chance of getting hurt, from the same rules the simulation uses.
-- **Decisions** (bites, antibiotics, strangers) open in a window that spells out what each choice does and what nobody can know yet. Irreversible choices are marked red and never pre-selected.
-- **Ticker (bottom):** the last three things that happened; click one to see where.
-- **Saving:** autosave every dawn; Ctrl+S quick-saves, Ctrl+L loads, Esc opens the menu (save, load, settings, new run). Settings has interface size (80–150%) and which alerts pause the game.
-
-Win by reaching day 30 with anyone still in the group. You lose if everyone is dead, turned or gone, or if every survivor's morale breaks.
-
-## Layout
 
 ```
-data/      items, buildings, loot tables, survivors, traits, events, town layout, attention, mobility, difficulty, scenario (all JSON)
+data/      all content as JSON: items, buildings, loot, survivors, traits, events, names, town layout, difficulty
 core/      autoloads (Rng, EventBus, WorldState, Data, TickLoop) and shared helpers
-systems/   time, infrastructure, town, base, jobs, infected, survivors, resources, events, outcome
-ui/        HUD, map, panels, planner, modals, log, charts, end screen; ui/theme/ holds the one theme
-tools/     headless runner, auto-player, screenshot tool, town generator, test runner
-tests/     one headless test suite per milestone
+systems/   the simulation, one system per file; systems talk only through WorldState and the EventBus
+render/    the drawn town, lighting, weather, fog and audio (readers only)
+ui/        the screen: HUD, panels, planner, decision windows, charts
+tools/     headless runner, auto-player, screenshot and benchmark tools, asset scripts
+tests/     headless test suites
 ```
 
-The rules the code keeps are in [CLAUDE.md](CLAUDE.md): the simulation never touches the UI, systems talk only through WorldState and the EventBus, content is data, units are real, randomness is seeded.
+The simulation never touches the screen, so it runs headless for tests and balance batches, and an automated player measures every balance change. More detail:
+- **[docs/GAME_GUIDE.md](docs/GAME_GUIDE.md):** every rule and number.
+- **[docs/GAME_DESIGN.md](docs/GAME_DESIGN.md):** the design.
+- **[docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md):** decisions and balance results.
+
+## Credits
+
+See [CREDITS.md](CREDITS.md). The sprite sheet was generated with ChatGPT (OpenAI). The sounds are synthesised by `tools/make_sounds.py`. Everything else is procedural.

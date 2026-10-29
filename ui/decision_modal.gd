@@ -25,7 +25,9 @@ func _ready() -> void:
 
 
 func _on_bus_event(event_name: StringName, _payload: Dictionary) -> void:
-	if event_name in [&"decision_needed", &"decision_made", &"run_started", &"game_loaded"]:
+	# Losing someone can make a waiting question about them moot.
+	if event_name in [&"decision_needed", &"decision_made", &"run_started", &"game_loaded",
+			&"survivor_died", &"survivor_turned", &"survivor_left", &"survivor_exiled"]:
 		if event_name in [&"run_started", &"game_loaded"]:
 			_later.clear()
 		refresh()
