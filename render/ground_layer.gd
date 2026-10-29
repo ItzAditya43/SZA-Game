@@ -8,6 +8,9 @@ extends TileMapLayer
 const Sprites := preload("res://render/sprites.gd")
 
 const TILE: int = 64
+## Tiles are built at twice their world size and the layer drawn at half scale,
+## so zoomed-in ground keeps the art's detail.
+const TEX: int = 128
 enum T { DIRT, GRASS, PLAZA, FIELD, BURNT, RUBBLE, ROAD, ROAD_A, ROAD_B, ROAD_PLAIN, CANAL, CANAL_A, CANAL_B }
 const FALLBACK: Dictionary = {
 	T.DIRT: Color("6b5a40"), T.GRASS: Color("66603d"), T.PLAZA: Color("8a8478"), T.FIELD: Color("5f6a38"),
@@ -44,6 +47,7 @@ var _material: ShaderMaterial
 
 
 func _ready() -> void:
+	scale = Vector2.ONE * float(TILE) / float(TEX)
 	tile_set = _make_tile_set()
 	_material = ShaderMaterial.new()
 	var shader: Shader = Shader.new()
@@ -121,7 +125,7 @@ func _run(rows: Array, x: int, y: int, ch: String, step: Vector2i) -> int:
 
 func _make_tile_set() -> TileSet:
 	var count: int = T.size()
-	var atlas: Image = Image.create(TILE * count, TILE, false, Image.FORMAT_RGBA8)
+	var atlas: Image = Image.create(TEX * count, TEX, false, Image.FORMAT_RGBA8)
 	var sources: Dictionary = {
 		T.DIRT: ["ground_dirt", "full"], T.GRASS: ["ground_grass", "full"], T.PLAZA: ["ground_plaza", "full"],
 		T.FIELD: ["ground_field", "full"], T.BURNT: ["ground_burnt", "full"], T.RUBBLE: ["ground_rubble", "full"],
@@ -132,16 +136,17 @@ func _make_tile_set() -> TileSet:
 	for index: int in count:
 		var tile: Image = _cut(String(sources[index][0]), String(sources[index][1]))
 		if tile == null:
-			tile = Image.create(TILE, TILE, false, Image.FORMAT_RGBA8)
+			tile = Image.create(TEX, TEX, false, Image.FORMAT_RGBA8)
 			tile.fill(FALLBACK[index])
-		atlas.blit_rect(tile, Rect2i(0, 0, TILE, TILE), Vector2i(index * TILE, 0))
+		atlas.blit_rect(tile, Rect2i(0, 0, TEX, TEX), Vector2i(index * TEX, 0))
 	var source: TileSetAtlasSource = TileSetAtlasSource.new()
+	atlas.generate_mipmaps()
 	source.texture = ImageTexture.create_from_image(atlas)
-	source.texture_region_size = Vector2i(TILE, TILE)
+	source.texture_region_size = Vector2i(TEX, TEX)
 	for index: int in count:
 		source.create_tile(Vector2i(index, 0))
 	var tiles: TileSet = TileSet.new()
-	tiles.tile_size = Vector2i(TILE, TILE)
+	tiles.tile_size = Vector2i(TEX, TEX)
 	tiles.add_source(source, 0)
 	return tiles
 
@@ -153,6 +158,7 @@ func _cut(name: String, part: String) -> Image:
 	if image == null:
 		return null
 	image = image.duplicate()
+	image.clear_mipmaps()
 	image.convert(Image.FORMAT_RGBA8)
 	var w: int = image.get_width()
 	var h: int = image.get_height()
@@ -169,5 +175,5 @@ func _cut(name: String, part: String) -> Image:
 		_:
 			region = Rect2i(inset, inset, w - inset * 2, h - inset * 2)
 	var cut: Image = image.get_region(region)
-	cut.resize(TILE, TILE, Image.INTERPOLATE_LANCZOS)
+	cut.resize(TEX, TEX, Image.INTERPOLATE_LANCZOS)
 	return cut

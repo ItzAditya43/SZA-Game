@@ -1,5 +1,6 @@
-extends SubViewportContainer
-## The town as a 2D world: ground tiles, buildings, the infected, fires and the
+extends Control
+## The town as a 2D world, rendered at the screen's real pixel resolution (not the
+## UI's 1600×900 design size) so the art stays sharp: ground tiles, buildings, the infected, fires and the
 ## fog of knowledge, lit by the time of day, with weather, under a camera you
 ## can pan (drag, WASD) and zoom (mouse wheel). The group's tokens sit on a layer
 ## above the night tint so they always read.
@@ -21,7 +22,8 @@ const FogLayer := preload("res://render/fog_layer.gd")
 signal view_changed
 
 const TILE: float = 64.0
-const MAX_ZOOM: float = 2.2
+## Zoom is capped near the art's native size: past it sprites only get blurrier.
+const MAX_ZOOM: float = 1.25
 ## Below this zoom the map shows simplified blocks and zone tints, no dots or trees.
 const LOD_ZOOM: float = 0.12
 const PAN_KEYS_PX_S: float = 900.0
@@ -62,6 +64,11 @@ var _config: Dictionary
 var _map_px: Vector2 = Vector2(4096, 4096)
 var _min_zoom: float = 0.2
 var _target_zoom: float = 1.0
+## Logical zoom (screen pixels of this control per world pixel); the camera's own
+## zoom is this times _px, the screen's pixels per UI pixel.
+var _zoom: float = 1.0
+var _px: float = 1.0
+var _display: TextureRect
 var _fitted: bool = false
 var _quality: Dictionary = {}
 var _reduce_motion: bool = false
@@ -70,13 +77,23 @@ var _raining: bool = false
 
 func _ready() -> void:
 	_config = Data.table("render")
-	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip_contents = true
 	viewport = SubViewport.new()
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.handle_input_locally = false
 	viewport.transparent_bg = true
 	viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	add_child(viewport)
+	# Shows the viewport 1:1 in screen pixels, squeezed into this control's UI size.
+	_display = TextureRect.new()
+	_display.texture = viewport.get_texture()
+	_display.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_display.stretch_mode = TextureRect.STRETCH_SCALE
+	_display.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_display.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_display.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	add_child(_display)
 	_world = Node2D.new()
 	viewport.add_child(_world)
 	ground = GroundLayer.new()
@@ -176,44 +193,48 @@ func _refresh_world() -> void:
 func _on_resized() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
+	_px = maxf(0.25, get_viewport().get_final_transform().get_scale().x) if get_viewport() != null else 1.0
+	viewport.size = Vector2i(ceili(size.x * _px), ceili(size.y * _px))
 	_min_zoom = minf(size.x / _map_px.x, size.y / _map_px.y) * 0.9
-	(_rain.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(size.x * 0.6, 10, 1)
-	_rain.position = Vector2(size.x / 2.0, -20)
-	(_dust.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(size.x / 2.0, size.y / 2.0, 1)
-	_dust.position = size / 2.0
+	var vp: Vector2 = Vector2(viewport.size)
+	(_rain.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(vp.x * 0.6, 10, 1)
+	_rain.position = Vector2(vp.x / 2.0, -20)
+	(_dust.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(vp.x / 2.0, vp.y / 2.0, 1)
+	_dust.position = vp / 2.0
 	if not _fitted:
 		fit()
 	else:
-		_set_zoom(camera.zoom.x)
+		_set_zoom(_zoom)
 
 
 ## Shows the whole town.
 func fit() -> void:
 	_fitted = true
 	_target_zoom = _min_zoom / 0.9
-	camera.zoom = Vector2(_target_zoom, _target_zoom)
+	_zoom = _target_zoom
+	camera.zoom = Vector2(_zoom, _zoom) * _px
 	camera.position = _map_px / 2.0
 	camera.reset_smoothing()
 	_after_camera_move()
 
 
 func tile_px() -> float:
-	return TILE * camera.zoom.x
+	return TILE * _zoom
 
 
 ## Screen position (in this control) of a world pixel.
 func world_to_view(p: Vector2) -> Vector2:
-	return viewport.canvas_transform * p
+	return (viewport.canvas_transform * p) / _px
 
 
 func view_to_world(p: Vector2) -> Vector2:
-	return viewport.canvas_transform.affine_inverse() * p
+	return viewport.canvas_transform.affine_inverse() * (p * _px)
 
 
 ## Zooms by `factor`, keeping the world point under `at` (view coordinates) still.
 func zoom_at(factor: float, at: Vector2) -> void:
 	var before: Vector2 = view_to_world(at)
-	_set_zoom(camera.zoom.x * factor)
+	_set_zoom(_zoom * factor)
 	camera.force_update_scroll()
 	var after: Vector2 = view_to_world(at)
 	camera.position += before - after
@@ -223,7 +244,7 @@ func zoom_at(factor: float, at: Vector2) -> void:
 
 
 func pan(view_delta: Vector2) -> void:
-	camera.position -= view_delta / camera.zoom.x
+	camera.position -= view_delta / _zoom
 	_clamp_camera()
 	camera.reset_smoothing()
 	_after_camera_move()
@@ -239,24 +260,24 @@ func look_at_m(pos_m: Vector2) -> void:
 
 
 func _set_zoom(z: float) -> void:
-	z = clampf(z, _min_zoom, MAX_ZOOM)
-	camera.zoom = Vector2(z, z)
+	_zoom = clampf(z, _min_zoom, MAX_ZOOM)
+	camera.zoom = Vector2(_zoom, _zoom) * _px
 	_clamp_camera()
 
 
 func _clamp_camera() -> void:
-	var half: Vector2 = size / camera.zoom.x / 2.0
+	var half: Vector2 = size / _zoom / 2.0
 	var lo: Vector2 = Vector2(minf(half.x, _map_px.x / 2.0), minf(half.y, _map_px.y / 2.0))
 	var hi: Vector2 = Vector2(maxf(_map_px.x - half.x, _map_px.x / 2.0), maxf(_map_px.y - half.y, _map_px.y / 2.0))
 	camera.position = camera.position.clamp(lo, hi)
 
 
 func _after_camera_move() -> void:
-	var far: bool = camera.zoom.x < LOD_ZOOM
+	var far: bool = _zoom < LOD_ZOOM
 	buildings.simple = far
 	actors.show_dots = not far
 	# Tokens keep roughly the same on-screen size, a little bigger when zoomed in.
-	tokens.token_scale = clampf(0.75 / camera.zoom.x, 0.6, 2.4)
+	tokens.token_scale = clampf(0.75 / _zoom, 0.6, 2.4)
 	view_changed.emit()
 
 
