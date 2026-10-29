@@ -72,6 +72,18 @@ Use `godot res://tools/screenshot.tscn -- [options] --out=/path/shot.png`.
 | `--menu=pause\|load\|settings` | Opens that menu |
 | `--overlay=noise\|light\|smell\|attention\|disease` | Map layer |
 | `--decide-later=1` / `--hints=0` | Puts waiting decisions aside / hides the tip card |
+| `--zoom=3` | Zooms in on the base |
+| `--rain=1` | Shows rain (visual only) |
+| `--generator=1` | Gives the group a running generator (for night shots) |
+| `--quality=low\|medium\|high` | Graphics preset for this shot only |
+
+### Graphics and audio tools
+
+| What | Command |
+| --- | --- |
+| Frames per second for each graphics preset (night, generator, rain, 3× speed, zoomed in) | `godot res://tools/fps_bench.tscn -- --size=1920x1080` |
+| Re-cut a new sprite sheet into `assets/sprites/` | `python3 tools/slice_sheet.py assets/source/sheet_v1.png assets/sprites` then `godot --headless --import` |
+| Regenerate every sound | `python3 tools/make_sounds.py` |
 
 ---
 
@@ -461,6 +473,13 @@ On Hard these drop sharply.
   - **Alerts** (red when urgent; click for the list and auto-pause choices)
   - `?` for keys, Panel to hide the side panel, Menu
 - **Map:**
+  - drawn from the sprite sheet, lit by the time of day (cool dawn, harsh noon, golden dusk, dark night)
+  - lamps, cooking fires and the generator glow at night and are blocked by buildings, which shows why lights draw attention
+  - rain, heat shimmer, smoke from fires, weeds creeping over roads as the days pass
+  - buildings show their state: boarded, forced open, burned, a tarp on a base that has been broken into
+  - the infected are dots clustered per zone, leaning towards a base that has drawn attention
+  - the fog of knowledge: dark where nobody has been, grey where it was seen a while ago, clear near the base and anyone out
+  - **scroll to zoom, drag (any mouse button) or WASD to move**; zoomed far out it shows simple blocks and zone tints
   - click a building for its card: what's inside, danger, last visit, plan a trip, move base
   - layer bar: infected, noise, light at night, smell and wind, attention, disease risk, plain map, each with a legend
   - survivors out on trips show as dots with dashed routes
@@ -478,6 +497,7 @@ On Hard these drop sharply.
 | Key | Action |
 | --- | --- |
 | Space | pause / resume |
+| W A S D | move the map (scroll to zoom) |
 | 1 / 2 / 3 | 1×, 3×, 10× |
 | Tab | side panel |
 | Esc | menu (save, load, settings, new run) |
@@ -485,10 +505,18 @@ On Hard these drop sharply.
 | Ctrl+L | load |
 | ? | all keys |
 
-**Settings** (Esc → Settings):
-- interface size, 80–150%
-- which alerts pause the game
-- show the first-day hints again
+**Settings** (Esc → Settings), in four tabs:
+- **General:** interface size, 80–150%; show the first-day hints again
+- **Alerts:** which alerts pause the game
+- **Graphics:** quality Low / Medium / High, or each of lights, shadows, particles and screen effects on its own; Reduce motion
+- **Audio:** volumes for master, music (none yet), ambience, sound effects and interface
+
+**Sound:**
+- ambience changes with day, night, rain and midday heat, and is muffled while paused or deciding
+- distant gunshots are louder the nearer they are to the base
+- forced doors, night attacks and hammering at the base
+- the generator hums while it runs, and fires crackle louder as the camera nears them
+- alert chimes by tier, and clicks
 
 ---
 

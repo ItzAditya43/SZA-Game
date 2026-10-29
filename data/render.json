@@ -1,0 +1,36 @@
+{
+  "comment": "Look and feel only; nothing here changes the simulation. Read by render/ (never loaded by headless runs' logic, though the data loader parses every file).",
+
+  "comment_day_colors": "CanvasModulate colour by minute of day, blended linearly between stops: cool blue before dawn, warm sunrise, harsh pale noon, golden dusk, deep blue night.",
+  "day_colors": [
+    { "minute": 0,    "color": "#3d4a78" },
+    { "minute": 300,  "color": "#46507e" },
+    { "minute": 360,  "color": "#c98a6a" },
+    { "minute": 450,  "color": "#f2dcc0" },
+    { "minute": 720,  "color": "#fffaf0" },
+    { "minute": 900,  "color": "#fff3dc" },
+    { "minute": 1020, "color": "#f0b878" },
+    { "minute": 1080, "color": "#d0907a" },
+    { "minute": 1140, "color": "#7a6c94" },
+    { "minute": 1200, "color": "#4a5280" },
+    { "minute": 1440, "color": "#3d4a78" }
+  ],
+
+  "comment_quality": "Presets for Settings > Graphics. Each toggle can also be set on its own.",
+  "quality": {
+    "low":    { "lights": false, "shadows": false, "particles": false, "screen_effects": false },
+    "medium": { "lights": true,  "shadows": false, "particles": true,  "screen_effects": false },
+    "high":   { "lights": true,  "shadows": true,  "particles": true,  "screen_effects": true }
+  },
+
+  "rain_hours_after_storm": 2.0,
+  "body_mark_days": 3.0,
+  "fire_smoke_hours": 10.0,
+  "comment_wind": "Fixed until the simulation has wind (prompt 4): blowing towards the north-east, in map pixels per second for drifting smoke and leaves.",
+  "wind_px_s": [14.0, -8.0],
+  "weeds_full_day": 60,
+  "infected_per_dot": 40,
+  "infected_max_dots_per_zone": 36,
+  "survivor_view_m": 150.0,
+  "base_view_m": 250.0
+}

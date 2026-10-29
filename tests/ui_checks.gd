@@ -11,6 +11,7 @@ const Decisions := preload("res://core/decisions.gd")
 
 
 func run_checks() -> void:
+	_check_simulation_loads_no_render()
 	_check_trip_estimate_matches_trip()
 	_check_attention_breakdown_matches_gain()
 	_check_forecasts()
@@ -19,6 +20,16 @@ func run_checks() -> void:
 	_check_alerts_use_what_the_group_knows()
 	# The screen check runs from test_ui.gd one frame later: nodes added while the
 	# test script initialises only become ready once the tree starts running.
+
+
+## Rule 10: a simulation run (as the headless runner does it) never loads render/ or assets/.
+func _check_simulation_loads_no_render() -> void:
+	start(899)
+	TickLoop.run_headless(WorldState.TICKS_PER_DAY)
+	var loaded: Array = ["res://render/world_view.gd", "res://render/audio_director.gd", "res://render/sprites.gd",
+		"res://assets/sprites/bld_house.png", "res://assets/audio/amb_day.wav"].filter(
+		func(path: String) -> bool: return ResourceLoader.has_cached(path))
+	expect("a day of simulation loads nothing from render/ or assets/", loaded.is_empty(), str(loaded))
 
 
 func _rest_everyone() -> void:

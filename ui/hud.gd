@@ -17,6 +17,8 @@ const Geo := preload("res://core/geo.gd")
 const Controls := preload("res://ui/controls.gd")
 const MapGrid := preload("res://ui/map_grid.gd")
 const BuildingPanel := preload("res://ui/building_panel.gd")
+const WorldView := preload("res://render/world_view.gd")
+const AudioDirector := preload("res://render/audio_director.gd")
 const PeoplePanel := preload("res://ui/people_panel.gd")
 const StoresPanel := preload("res://ui/stores_panel.gd")
 const BasePanel := preload("res://ui/base_panel.gd")
@@ -39,6 +41,8 @@ enum Tab { PEOPLE, STORES, BASE, LOG, STATS }
 var ui_state: UiState = UiState.new()
 var top_bar: Controls
 var map: MapGrid
+var world_view: WorldView
+var audio: AudioDirector
 var tabs: TabContainer
 var side: PanelContainer
 var building_panel: BuildingPanel
@@ -96,6 +100,9 @@ func _ready() -> void:
 	var ticker: Ticker = Ticker.new()
 	column.add_child(ticker)
 	_build_popups()
+	audio = AudioDirector.new()
+	audio.world_view = world_view
+	add_child(audio)
 
 	top_bar.panel_toggled.connect(func() -> void: side.visible = not side.visible)
 	top_bar.alerts_pressed.connect(func() -> void:
@@ -119,10 +126,14 @@ func _build_map_area() -> Control:
 	area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	area.clip_contents = true
+	# The rendered town underneath; the map control on top handles input and overlays.
+	world_view = WorldView.new()
+	world_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+	area.add_child(world_view)
 	map = MapGrid.new()
 	map.ui_state = ui_state
+	map.view = world_view
 	map.set_anchors_preset(Control.PRESET_FULL_RECT)
-	map.offset_top = 52.0
 	area.add_child(map)
 	var bar: PanelContainer = Kit.panel("Floating")
 	bar.position = Vector2(Tokens.SPACE_S, Tokens.SPACE_S)
@@ -277,11 +288,16 @@ func _refresh_alerts() -> void:
 	var worst: String = alerts[0]["tier"] if not alerts.is_empty() else ""
 	top_bar.set_alerts(alerts.size(), worst)
 	var fresh: Dictionary = {}
+	var chime: String = ""
 	for alert: Dictionary in alerts:
 		fresh[alert["id"]] = true
+		if not _alert_ids.has(alert["id"]) and chime == "":
+			chime = String(alert["tier"])  # alerts come worst first
 		if not _alert_ids.has(alert["id"]) and Settings.autopause(String(alert["type"])) and TickLoop.speed != TickLoop.Speed.PAUSED:
 			TickLoop.set_speed(TickLoop.Speed.PAUSED)
 	_alert_ids = fresh
+	if chime != "" and audio != null:
+		audio.alert(chime)
 	if alerts_panel.visible:
 		alerts_panel.alerts = alerts
 		alerts_panel.rebuild()

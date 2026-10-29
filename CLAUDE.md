@@ -41,6 +41,10 @@ res://
             shortcuts.gd, start_screen.gd, save_menu.gd, end_screen.gd, settings.gd, ui_state.gd
             + kit.gd/meter.gd/tip_label.gd/tip_panel.gd (widgets)
             + theme/tokens.gd (colours, sizes) and theme/main_theme.tres (from tools/build_theme.gd)
+  render/   world_view.gd (camera, light, weather; under ui/map_grid.gd), ground_layer.gd,
+            buildings_layer.gd, actors_layer.gd, survivor_tokens.gd, fog_layer.gd,
+            audio_director.gd, sprites.gd. Readers only; never loaded by headless runs.
+  assets/   sprites/ (sliced from source/ by tools/slice_sheet.py), audio/ (tools/make_sounds.py)
   tools/    headless_runner.gd (+ headless_run.gd), auto_player.gd, screenshot.tscn,
             make_town.py, run_tests.sh
   tests/    test_milestone_N.gd (entry) + milestone_N_checks.gd, checks_base.gd

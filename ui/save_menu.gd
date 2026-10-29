@@ -74,39 +74,117 @@ func open_load() -> void:
 ## UI scale, alerts that pause the game, and the first-day hints.
 func open_settings() -> void:
 	_clear("Settings")
-	var scale_label: Label = Label.new()
-	scale_label.text = "Interface size: %d%%" % roundi(Settings.ui_scale() * 100.0)
-	_column.add_child(scale_label)
+	var tabs: TabContainer = TabContainer.new()
+	tabs.custom_minimum_size = Vector2(560, 380)
+	_column.add_child(tabs)
+	tabs.add_child(_settings_general())
+	tabs.add_child(_settings_alerts())
+	tabs.add_child(_settings_graphics())
+	tabs.add_child(_settings_audio())
+	_add_button("Back", open_pause)
+	_show()
+
+
+func _tab(title: String) -> VBoxContainer:
+	var box: VBoxContainer = VBoxContainer.new()
+	box.name = title
+	box.add_theme_constant_override("separation", 8)
+	return box
+
+
+func _slider(box: VBoxContainer, caption: String, lo: float, hi: float, step: float, now: float, on_change: Callable) -> void:
+	var label: Label = Label.new()
+	label.text = caption % roundi(now)
+	box.add_child(label)
 	var slider: HSlider = HSlider.new()
-	slider.min_value = Settings.MIN_SCALE * 100.0
-	slider.max_value = Settings.MAX_SCALE * 100.0
-	slider.step = 10.0
-	slider.value = Settings.ui_scale() * 100.0
+	slider.min_value = lo
+	slider.max_value = hi
+	slider.step = step
+	slider.value = now
 	slider.focus_mode = Control.FOCUS_NONE
 	slider.custom_minimum_size = Vector2(300, 24)
 	slider.value_changed.connect(func(v: float) -> void:
-		scale_label.text = "Interface size: %d%%" % roundi(v)
-		Settings.set_ui_scale(v / 100.0, get_tree()))
-	_column.add_child(slider)
+		label.text = caption % roundi(v)
+		on_change.call(v))
+	box.add_child(slider)
+
+
+func _check(parent: Control, text: String, on: bool, on_toggle: Callable) -> CheckBox:
+	var box: CheckBox = CheckBox.new()
+	box.focus_mode = Control.FOCUS_NONE
+	box.text = text
+	box.button_pressed = on
+	box.toggled.connect(on_toggle)
+	parent.add_child(box)
+	return box
+
+
+func _settings_general() -> Control:
+	var box: VBoxContainer = _tab("General")
+	_slider(box, "Interface size: %d%%", Settings.MIN_SCALE * 100.0, Settings.MAX_SCALE * 100.0, 10.0, Settings.ui_scale() * 100.0,
+		func(v: float) -> void: Settings.set_ui_scale(v / 100.0, get_tree()))
+	var hints: Button = Button.new()
+	hints.text = "Show the first-day hints again"
+	hints.focus_mode = Control.FOCUS_NONE
+	hints.pressed.connect(func() -> void:
+		Settings.reset_hints()
+		_message.text = "Hints will show again.")
+	box.add_child(hints)
+	return box
+
+
+func _settings_alerts() -> Control:
+	var box: VBoxContainer = _tab("Alerts")
 	var pause_label: Label = Label.new()
 	pause_label.text = "Pause the game when one of these appears:"
 	pause_label.theme_type_variation = "MutedLabel"
-	_column.add_child(pause_label)
+	box.add_child(pause_label)
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 2
-	_column.add_child(grid)
+	box.add_child(grid)
 	for type: String in Alerts.TYPES:
-		var box: CheckBox = CheckBox.new()
-		box.focus_mode = Control.FOCUS_NONE
-		box.text = Alerts.TYPES[type]
-		box.button_pressed = Settings.autopause(type)
-		box.toggled.connect(func(on: bool) -> void: Settings.set_autopause(type, on))
-		grid.add_child(box)
-	_add_button("Show the first-day hints again", func() -> void:
-		Settings.reset_hints()
-		_message.text = "Hints will show again.")
-	_add_button("Back", open_pause)
-	_show()
+		_check(grid, Alerts.TYPES[type], Settings.autopause(type), func(on: bool) -> void: Settings.set_autopause(type, on))
+	return box
+
+
+func _settings_graphics() -> Control:
+	var box: VBoxContainer = _tab("Graphics")
+	var row: HBoxContainer = HBoxContainer.new()
+	box.add_child(row)
+	var label: Label = Label.new()
+	label.text = "Quality:"
+	row.add_child(label)
+	var toggles: Dictionary = {}
+	for preset: String in ["low", "medium", "high"]:
+		var b: Button = Button.new()
+		b.text = preset.capitalize()
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.theme_type_variation = "SpeedButton"
+		b.button_pressed = Settings.quality_preset() == preset
+		b.pressed.connect(func() -> void:
+			Settings.set_quality_preset(preset)
+			for other: Button in row.get_children().filter(func(n: Node) -> bool: return n is Button):
+				other.set_pressed_no_signal(other == b)
+			for key: String in toggles:
+				(toggles[key] as CheckBox).set_pressed_no_signal(Settings.graphics(key)))
+		row.add_child(b)
+	var names: Dictionary = {"lights": "Lights (lamps, fires, generator)", "shadows": "Shadows (buildings block light)",
+		"particles": "Particles (rain, smoke, dust)", "screen_effects": "Screen effects (heat shimmer, heavy rain)"}
+	for key: String in Settings.GRAPHICS_TOGGLES:
+		toggles[key] = _check(box, names[key], Settings.graphics(key), func(on: bool) -> void: Settings.set_graphics(key, on))
+	_check(box, "Reduce motion (no gliding, drifting or shimmer)", Settings.reduce_motion(),
+		func(on: bool) -> void: Settings.set_reduce_motion(on))
+	return box
+
+
+func _settings_audio() -> Control:
+	var box: VBoxContainer = _tab("Audio")
+	var names: Dictionary = {"Master": "Master", "Music": "Music (none yet)", "Ambient": "Ambience", "SFX": "Sound effects", "UI": "Interface"}
+	for bus: String in Settings.AUDIO_BUSES:
+		_slider(box, names[bus] + ": %d%%", 0.0, 100.0, 5.0, Settings.volume(bus) * 100.0,
+			func(v: float) -> void: Settings.set_volume(bus, v / 100.0))
+	return box
 
 
 ## Shows a problem (such as an incompatible save) without closing the menu.

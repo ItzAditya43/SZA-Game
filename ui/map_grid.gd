@@ -1,8 +1,12 @@
 extends Control
-## The town map, scaled to fill its space: terrain, buildings coloured by type,
-## your base, survivors out on trips with their route, and one overlay at a time
-## (infected, noise, light at night, smell, attention, disease risk) with a legend.
-## Hover a building for what you know about it; click to select it.
+## The town map's interactive layer. With a world view under it (render/world_view.gd)
+## it is transparent and draws only what the player reads off the map: one
+## overlay at a time (infected, noise, light at night, smell, attention, disease
+## risk) with a legend, outlines for the base, the selection and the hovered
+## building, survivors' routes, landmark names and noise rings. Without one (tests,
+## art-free fallback) it draws the whole map in flat colours itself.
+## Hover a building for what you know about it; click to select it; scroll to zoom
+## and drag (or WASD) to move.
 
 const UiState := preload("res://ui/ui_state.gd")
 const Geo := preload("res://core/geo.gd")
@@ -22,6 +26,10 @@ const INFECTED_TINT_FULL: float = 2500.0
 const NIGHT_TINT: Color = Color(0.03, 0.05, 0.12, 0.32)
 const NOISE_FADE_TICKS: int = 12
 const PULSE_SECONDS: float = 3.0
+## Noise rings grow to their real reach over this long, then fade.
+const RING_GROW_S: float = 1.2
+const RING_FADE_S: float = 1.8
+const DRAG_START_PX: float = 6.0
 
 var ui_state: UiState
 var overlay: String = "infected"
@@ -30,6 +38,10 @@ var _noises: Array = []  # [{"pos": Vector2 (m), "radius": float, "tick": int, "
 var _pulse: Vector2 = Vector2(-1, -1)
 var _pulse_left: float = 0.0
 var _hover: String = ""
+## The world view underneath, if any (set by the HUD).
+var view: Control = null
+var _drag_from: Vector2 = Vector2(-1, -1)
+var _dragging: bool = false
 
 
 func _ready() -> void:
@@ -49,6 +61,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _pulse_left > 0.0:
 		_pulse_left -= delta
+	# The camera glides and rings grow, so redraw every frame over a world view.
+	if view != null or _pulse_left > 0.0:
 		queue_redraw()
 
 
@@ -60,6 +74,8 @@ func set_overlay(name: String) -> void:
 ## Flashes a ring at a spot in town (metres), e.g. when a log line is clicked.
 func pulse_at(pos_m: Vector2) -> void:
 	_pulse = pos_m
+	if view != null:
+		view.call("look_at_m", pos_m)
 	_pulse_left = PULSE_SECONDS
 	queue_redraw()
 
@@ -70,8 +86,11 @@ func _on_bus_event(event_name: StringName, payload: Dictionary) -> void:
 			_noises.clear()
 			_build_terrain()
 		&"noise":
+			if payload.get("continuous", false) and _noises.any(func(n: Dictionary) -> bool: return n.get("continuous", false) and WorldState.tick - int(n["tick"]) < 6):
+				return
 			_noises.append({"pos": Vector2(float(payload["x_m"]), float(payload["y_m"])), "radius": float(payload["radius_m"]),
-				"tick": WorldState.tick, "source": payload.get("source", &"noise")})
+				"tick": WorldState.tick, "source": payload.get("source", &"noise"), "born": Time.get_ticks_msec(),
+				"continuous": payload.get("continuous", false)})
 			if _noises.size() > 40:
 				_noises.pop_front()
 	queue_redraw()
@@ -94,12 +113,16 @@ func _build_terrain() -> void:
 # --- Geometry: the map is square, centred in the control ---
 
 func tile_px() -> float:
+	if view != null:
+		return float(view.call("tile_px"))
 	var tiles: float = float(WorldState.town.get("width", 64))
 	return floorf(minf(size.x, size.y) / tiles * 4.0) / 4.0
 
 
 ## Left-aligned, so the building card has room on the right of wide screens.
 func map_origin() -> Vector2:
+	if view != null:
+		return view.call("world_to_view", Vector2.ZERO)
 	var span: float = tile_px() * float(WorldState.town.get("width", 64))
 	return Vector2(Tokens.SPACE_S, floorf((size.y - span) / 2.0))
 
@@ -121,12 +144,14 @@ func _building_rect(b: Dictionary) -> Rect2:
 # --- Drawing ---
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Tokens.BG_APP)
+	if view == null:
+		draw_rect(Rect2(Vector2.ZERO, size), Tokens.BG_APP)
 	if _terrain == null:
 		return
 	var t: float = tile_px()
 	var span: float = t * float(WorldState.town.get("width", 64))
-	draw_texture_rect(_terrain, Rect2(map_origin(), Vector2(span, span)), false)
+	if view == null:
+		draw_texture_rect(_terrain, Rect2(map_origin(), Vector2(span, span)), false)
 	if overlay == "infected":
 		_draw_infected()
 	_draw_buildings()
@@ -145,7 +170,8 @@ func _draw() -> void:
 	if overlay == "infected":
 		_draw_infected_labels()
 	_draw_survivors()
-	if WorldState.phase() == WorldState.PHASE_NIGHT:
+	_draw_noise_rings()
+	if view == null and WorldState.phase() == WorldState.PHASE_NIGHT:
 		draw_rect(Rect2(map_origin(), Vector2(span, span)), NIGHT_TINT)
 	if _pulse_left > 0.0:
 		var p: Vector2 = to_screen(_pulse)
@@ -161,7 +187,7 @@ func _draw_infected() -> void:
 	for i: int in WorldState.zones.size():
 		var count: float = float(WorldState.zones[i]["infected"])
 		var rect: Rect2 = Rect2(map_origin() + Vector2(float(i % Geo.ZONE_COLS), float(i / Geo.ZONE_COLS)) * zone_px, Vector2(zone_px, zone_px))
-		draw_rect(rect, Color(Tokens.INFECTED, clampf(count / INFECTED_TINT_FULL, 0.0, 1.0) * 0.42))
+		draw_rect(rect, Color(Tokens.INFECTED, clampf(count / INFECTED_TINT_FULL, 0.0, 1.0) * (0.22 if view != null else 0.42)))
 		draw_rect(rect, Color(1, 1, 1, 0.07), false, 1.0)
 
 
@@ -188,9 +214,10 @@ func _draw_buildings() -> void:
 			color = Color("2b2523")
 		elif b["stripped"]:
 			color = color.darkened(0.5)
-		draw_rect(rect, color)
-		draw_rect(rect, color.darkened(0.6), false, 1.0)
-		if float(b.get("barricade", 0.0)) > 0.0:
+		if view == null:
+			draw_rect(rect, color)
+			draw_rect(rect, color.darkened(0.6), false, 1.0)
+		if view == null and float(b.get("barricade", 0.0)) > 0.0:
 			draw_rect(rect.grow(-2), Color(0.95, 0.75, 0.45, 0.9), false, 1.5)
 		if b["id"] == _hover:
 			draw_rect(rect.grow(1), Color(1, 1, 1, 0.6), false, 1.5)
@@ -219,6 +246,8 @@ func _draw_survivors() -> void:
 			draw_dashed_line(pos, to_screen(trip["dest"]), Color(Tokens.GROUP, 0.7), 1.5, 6.0)
 		elif trip.has("origin") and trip.get("leg", &"") == &"back":
 			draw_dashed_line(pos, to_screen(trip["origin"]), Color(Tokens.GROUP, 0.7), 1.5, 6.0)
+		if view != null:
+			continue  # the world view draws the token and name
 		draw_circle(pos, 9.0, Color(0, 0, 0, 0.7))
 		draw_circle(pos, 7.0, Tokens.GROUP)
 		draw_string(font, pos + Vector2(-4, 5), String(s["name"]).left(1), HORIZONTAL_ALIGNMENT_LEFT, -1, Tokens.FONT_SMALL, Tokens.TEXT_ON_ACCENT)
@@ -299,17 +328,40 @@ func _draw_legend() -> void:
 		"none": [],
 	}[overlay]
 	lines = lines + [["Blue outline: base · yellow: selected · blue dots: people out", Tokens.TEXT_MUTED]]
+	if view != null:
+		lines = lines + [["Scroll to zoom · drag or WASD to move · dark: never seen, grey: seen a while ago", Tokens.TEXT_MUTED]]
 	var font: Font = get_theme_default_font()
 	var h: float = Tokens.FONT_SMALL + 6.0
-	var box: Rect2 = Rect2(Vector2(8, size.y - 8 - h * lines.size() - 8), Vector2(390, h * lines.size() + 8))
+	var width: float = 0.0
+	for line: Array in lines:
+		width = maxf(width, font.get_string_size(String(line[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, Tokens.FONT_SMALL).x)
+	var box: Rect2 = Rect2(Vector2(8, size.y - 8 - h * lines.size() - 8), Vector2(width + 16, h * lines.size() + 8))
 	draw_rect(box, Color(Tokens.BG_PANEL, 0.88))
 	for i: int in lines.size():
 		draw_string(font, box.position + Vector2(8, 4 + h * (i + 1) - 6), lines[i][0], HORIZONTAL_ALIGNMENT_LEFT, -1, Tokens.FONT_SMALL, lines[i][1])
 
 
+## Every noise grows a ring out to how far it carries, then fades.
+func _draw_noise_rings() -> void:
+	var now: int = Time.get_ticks_msec()
+	for n: Dictionary in _noises:
+		if n.get("continuous", false) or not n.has("born"):
+			continue
+		var age: float = float(now - int(n["born"])) / 1000.0
+		if age > RING_GROW_S + RING_FADE_S:
+			continue
+		var grow: float = clampf(age / RING_GROW_S, 0.0, 1.0)
+		var fade: float = 1.0 - clampf((age - RING_GROW_S) / RING_FADE_S, 0.0, 1.0)
+		var radius: float = _px(float(n["radius"])) * (1.0 - pow(1.0 - grow, 3.0))
+		draw_arc(to_screen(n["pos"]), radius, 0.0, TAU, 72, Color(Tokens.NOISE, 0.85 * fade), 2.5)
+
+
 # --- Input ---
 
 func _gui_input(event: InputEvent) -> void:
+	if view != null and _camera_input(event):
+		accept_event()
+		return
 	var motion: InputEventMouseMotion = event as InputEventMouseMotion
 	if motion != null:
 		var hovered: String = Geo.building_at_tile(to_tile(motion.position)).get("id", "")
@@ -318,12 +370,44 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 		return
 	var click: InputEventMouseButton = event as InputEventMouseButton
-	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+	if click == null or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# Select on release, unless the press turned into a drag.
+	if view != null:
+		if click.pressed or _dragging:
+			_dragging = false
+			return
+	elif not click.pressed:
 		return
 	var building: Dictionary = Geo.building_at_tile(to_tile(click.position))
 	if ui_state != null:
 		ui_state.select_building(building.get("id", ""))
 	accept_event()
+
+
+## Wheel zooms, drag (any button) pans. True if the event was used.
+func _camera_input(event: InputEvent) -> bool:
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button != null:
+		if button.pressed and button.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			var step: float = float(view.get("ZOOM_STEP"))
+			view.call("zoom_at", step if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / step, button.position)
+			return true
+		if button.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+			if button.pressed:
+				_drag_from = button.position
+				_dragging = false
+			else:
+				_drag_from = Vector2(-1, -1)
+			return button.button_index != MOUSE_BUTTON_LEFT
+	var motion: InputEventMouseMotion = event as InputEventMouseMotion
+	if motion != null and _drag_from.x >= 0.0 and motion.button_mask != 0:
+		if not _dragging and motion.position.distance_to(_drag_from) >= DRAG_START_PX:
+			_dragging = true
+		if _dragging:
+			view.call("pan", motion.relative)
+			return true
+	return false
 
 
 func _make_custom_tooltip(_for_text: String) -> Object:

@@ -17,6 +17,8 @@ Needs Godot 4.3 or later (built and tested on 4.7.2). From this folder:
 | One test suite | `godot --headless --script res://tests/test_milestone_4.gd` |
 | One headless run, told as a story | `godot --headless --script res://tools/headless_runner.gd -- --difficulty=normal --seed=7 --days=30 --strategy=balanced --verbose=1` |
 | Balance batch (100 games per strategy and difficulty) | `godot --headless --script res://tools/headless_runner.gd -- --games=100 --difficulty=all --strategy=all` |
+| Frames per second for each graphics preset | `godot res://tools/fps_bench.tscn -- --size=1920x1080` |
+| Re-cut the sprite sheet / regenerate sounds | `python3 tools/slice_sheet.py assets/source/sheet_v1.png assets/sprites` / `python3 tools/make_sounds.py` |
 | Screenshot of the game screen | `godot res://tools/screenshot.tscn -- --difficulty=normal --seed=3 --hours=48 --tab=2 --out=/tmp/shot.png` |
 
 On a fresh clone, run `godot --headless --import` once first.
@@ -26,7 +28,7 @@ On a fresh clone, run `godot --headless --import` once first.
 You are the group's leader. You don't walk anyone around; you give orders and decide. Press **?** in game for every key.
 
 - **Top bar:** day and clock, date, temperature and phase, speed (Space pauses, 1/2/3 for 1×/3×/10×; at 1× a day takes 72 seconds), whether power, taps and phones still work, and **Alerts** (red when something is urgent; click it for the list and to choose what pauses the game).
-- **Map (centre):** the 2 km town. Click a building for its card: what's inside, danger, last visit, and buttons to plan a trip or move the base there. The bar above the map switches one layer at a time (infected, noise, light at night, smell and wind, attention, disease risk), each with a legend.
+- **Map (centre):** the 2 km town, drawn with sprites, lit by the time of day, with weather and sound. Scroll to zoom, drag or WASD to move. Click a building for its card: what's inside, danger, last visit, and buttons to plan a trip or move the base there. The bar above the map switches one layer at a time (infected, noise, light at night, smell and wind, attention, disease risk), each with a legend.
 - **Side panel (Tab hides it):** People (who does which job by day and night; drag a name to another job; each card shows water, food, sleep and stress, click it for the causes), Stores (how many days water, food, gas and medicine last), Base (defense, attention, standing orders), Log (filterable; click a line to find it on the map) and Stats (charts by day).
 - **Hover any number** to see what makes it up and where it's heading.
 - **Planning a trip:** pick who goes, when (now, midday, dusk, night) and what to bring back first. The planner shows the return time, how much they can carry and the chance of getting hurt, from the same rules the simulation uses.

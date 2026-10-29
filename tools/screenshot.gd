@@ -30,11 +30,21 @@ func _ready() -> void:
 		_viewport.size_2d_override_stretch = true
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_viewport)
+	# --quality=low|medium|high: graphics preset for this shot only (not saved).
+	var quality: String = _string_arg("quality", "")
+	if quality != "":
+		load("res://ui/settings.gd").overrides["graphics/preset"] = quality
 	var main: Node = load("res://main.tscn").instantiate()
 	main.set("autosave_enabled", false)
 	_viewport.add_child(main)
 	_hud = main.get_node("HUD")
 	TickLoop.set_speed(TickLoop.Speed.PAUSED)
+	# --generator=1: give the group a running generator from the start (for night shots).
+	if _string_arg("generator", "") == "1":
+		var stores: Script = load("res://core/stores.gd")
+		stores.call("add", WorldState.stores, "generator", 1.0)
+		stores.call("add", WorldState.stores, "fuel", 200.0)
+		EventBus.emit_event(&"command_set_policy", {"key": &"generator", "value": &"night"})
 	TickLoop.run_headless(SimRun.int_arg("hours", 0) * 6)
 	var tabs: TabContainer = _hud.get("tabs")
 	tabs.current_tab = clampi(SimRun.int_arg("tab", 0), 0, tabs.get_tab_count() - 1)
@@ -72,11 +82,32 @@ func _ready() -> void:
 			_hud.get("save_menu").open_load()
 
 	EventBus.emit_event(&"tick", {"tick": WorldState.tick})
+	# --rain=1 shows rain without a storm in the simulation; --zoom=3 zooms in on the base.
+	var view: Node = _hud.get("world_view")
+	if view != null:
+		if _string_arg("rain", "") == "1":
+			view.set("force_rain", true)
+			view.call("_update_light_and_weather")
+		var zoom: float = float(_string_arg("zoom", "1"))
+		if zoom != 1.0:
+			_zoom_later.call_deferred(view, zoom)
+
+
+func _zoom_later(view: Node, zoom: float) -> void:
+	await get_tree().process_frame
+	var cam: Camera2D = view.get("camera")
+	view.call("zoom_at", zoom, (view as Control).size / 2.0)
+	view.call("look_at_m", load("res://core/geo.gd").call("base_center_m"))
+	cam.reset_smoothing()
 
 
 func _process(_delta: float) -> void:
 	_frames += 1
-	if _frames == 5:
+	if _frames == 11 and OS.has_environment("SHOT_DEBUG"):
+		var v: Node = _hud.get("world_view")
+		var l: PointLight2D = v.get("_base_light")
+		print("light visible=", l.visible, " pos=", l.position, " energy=", l.energy, " scale=", l.texture_scale, " in_tree=", l.is_visible_in_tree(), " q=", v.get("_quality"), " phase=", WorldState.phase(), " gen=", WorldState.infrastructure.get("generator_running"))
+	if _frames == 12:
 		var path: String = _string_arg("out", "user://screenshot.png")
 		_viewport.get_texture().get_image().save_png(path)
 		print("Saved %s at %s" % [path, WorldState.clock_string()])

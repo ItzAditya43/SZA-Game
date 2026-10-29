@@ -310,6 +310,76 @@ The designer asked for the game not to read as set in one country, with names ra
 - **Not changed.** The `prompts/` folder (the designer's original briefs) still describes the old setting.
 - **Reference.** `docs/GAME_GUIDE.md`: the full player and developer reference, with commands.
 
+## Phase 2, prompt 3: Graphics and audio (branch `feat/graphics-audio`, from `feat/assets`)
+
+Built from `prompts/phase2/03-graphics-audio.md`, using the designer's sprite sheet (ChatGPT image generation; see CREDITS.md). That brief's South Indian direction is superseded by the neutral setting. The simulation is untouched: the balance batch is identical. A new check proves a simulation run loads nothing from `render/` or `assets/`.
+
+### How it fits together
+- `render/world_view.gd` is a SubViewportContainer holding a 2D world and a Camera2D.
+- `ui/map_grid.gd` sits on top, transparent. It keeps clicks, hover tooltips, the overlays and legend, routes and labels, and maps positions through the view's camera transform. Without a view (tests, art-free fallback) it still draws the whole flat map itself.
+- Every sprite is optional. A missing PNG falls back to flat colours or procedural shapes.
+
+### Parts A–H
+- **A, map.**
+  - The ground is one TileMapLayer whose atlas is cut at runtime from the ground sprites.
+  - Two-tile roads and the canal use half-width tiles, transposed where they run east–west.
+  - Buildings are sprites on their footprints. Hospital (helipad), police station (walls), school (L shape) and the water towers are recognisable from the art.
+  - Procedural trees on open ground.
+  - Camera: mouse-wheel zoom around the pointer, drag with any button, WASD, bounded to the map.
+  - Level of detail: below 0.12× zoom, flat blocks and no dots or trees.
+- **B, tokens.**
+  - Survivors are sprite tokens with their name. They glide to their simulated position each frame rather than jumping, and the sprite shows the state: pack, guard, asleep, bitten.
+  - Infected are dots clustered per zone, one per 40 infected, drifting slowly and leaning towards a base with high attention.
+  - Every noise grows a ring out to its real reach.
+- **C, light.**
+  - A CanvasModulate follows colour stops in `data/render.json`.
+  - A PointLight2D at the base at night: a lamp, a cooking fire, or the generator (much larger). Fires have their own lights.
+  - Buildings have LightOccluder2Ds, so light spills down lanes. The base doesn't block its own light.
+- **D, weather.**
+  - Rain particles plus darker, wet roads (shader) for 2 h after the storm event.
+  - Heat shimmer and bleaching (screen shader) at 36 °C+ between 11:00 and 16:00.
+  - Dust drifting with a fixed wind; smoke from fires drifts with the same wind.
+- **E, decay.**
+  - Looted buildings are darker with a forced door; barricaded ones are boarded; burned ones become a ruin with scorch marks; a base that has been broken into gets a blue tarp.
+  - Weeds creep over paving with the days (shader noise threshold; full by day 60).
+  - Bodies are marked for 3 days where people died; market fires burn for 10 h with smoke and light.
+- **F, fog of knowledge.** Built from WorldState alone, so nothing extra is saved:
+  - never seen: dark
+  - seen when a building was searched, plus the walk there: greys over 6 days
+  - near the base and anyone out now: clear
+- **G, audio.**
+  - Buses Master, Music, Ambient, SFX and UI, each with a slider.
+  - Ambience crossfades between day, night, rain and heat, and is low-passed while paused or a modal is open.
+  - Sound effects: gunshots (louder nearer the base), doors, night attacks, hammering, a generator loop, fire crackle (louder as the camera nears), tiered alert chimes and button clicks.
+  - Every sound is synthesised by `tools/make_sounds.py`, so there are no licences to track. No music.
+- **H, self-check and performance.**
+  - Screenshots are in `docs/screenshots/graphics/`.
+  - Settings → Graphics: Low/Medium/High plus per-toggle lights, shadows, particles and screen effects, and Reduce motion.
+  - `tools/fps_bench.tscn` (night, generator, rain, 3× speed, zoomed in) on this machine (Ryzen 7 5800HS, Radeon iGPU):
+
+    | Preset | 1920×1080 | 1280×720 |
+    | --- | --- | --- |
+    | Low | 488 fps | 469 fps |
+    | Medium | 469 fps | 418 fps |
+    | High | 444 fps | 347 fps |
+
+### Simplified or not done
+- **Tile layers.** Ground, roads and water share one TileMapLayer rather than separate layers. Buildings are sprites; vegetation is drawn procedurally.
+- **Routes.** Survivors walk the simulation's straight line between base and target, not along the roads; the simulation itself moves them in a straight line.
+- **Infected dots** show the true zone counts. Fuzzing them by knowledge is a hook for prompt 4. The fog uses the simple visited/near model.
+- **Hooks only:**
+  - blackout curtains (no such build yet)
+  - winter dawn fog (no seasons yet)
+  - floods (`set_water_level`)
+  - simulated wind (a fixed direction in `data/render.json`)
+
+### Still looks weak
+- **Ground tiles repeat visibly** when zoomed in. A sheet with 3–4 variants per ground type would fix it.
+- **Building art is 3/4 view, not straight down.** It reads well, but a top-down set would sit on the grid more naturally.
+- **Tokens overlap** when everyone is at base.
+- **Dusk is strongly orange** when the infected overlay's red tint is on too.
+- **The synthesised sounds are serviceable, not rich.** Recorded CC0 ambience (crickets, wind, distant dogs) would lift the mood most.
+
 ## Spec ambiguities and how they were resolved
 
 Each was settled by the realism rules or the simplest option that keeps the architecture intact. Every one is cheap to change.

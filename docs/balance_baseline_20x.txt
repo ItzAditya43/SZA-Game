@@ -1,0 +1,28 @@
+
+== Easy ==
+balanced     20 games: won 100% · survivors alive 78% (90 of 116) · median first loss day 13.7 · avg score 1181 · breaches/game 0.0
+             losses: turned 25, arterial bleed 1
+fortress     20 games: won 100% · survivors alive 92% (106 of 115) · median first loss day none · avg score 1162 · breaches/game 0.0
+             losses: turned 8, left the group 1
+hoard_water  20 games: won 95% · survivors alive 74% (86 of 116) · median first loss day 12.2 · avg score 1073 · breaches/game 0.1
+             losses: turned 25, left the group 3, the group scattered 1, killed by infected 1
+keep_moving  20 games: won 100% · survivors alive 76% (84 of 110) · median first loss day 12.7 · avg score 775 · breaches/game 0.0
+             losses: turned 20, left the group 5, arterial bleed 1
+== Normal ==
+balanced     20 games: won 75% · survivors alive 54% (61 of 114) · median first loss day 9.5 · avg score 888 · breaches/game 1.3
+             losses: turned 37, left the group 10, the group scattered 6
+fortress     20 games: won 90% · survivors alive 81% (91 of 113) · median first loss day none · avg score 996 · breaches/game 0.0
+             losses: turned 9, left the group 9, the group scattered 3, arterial bleed 1
+hoard_water  20 games: won 70% · survivors alive 43% (48 of 111) · median first loss day 8.8 · avg score 722 · breaches/game 0.8
+             losses: turned 39, left the group 16, the group scattered 7, killed when the base was overrun 1
+keep_moving  20 games: won 75% · survivors alive 43% (46 of 108) · median first loss day 13.3 · avg score 481 · breaches/game 0.2
+             losses: left the group 27, turned 27, the group scattered 6, arterial bleed 2
+== Hard ==
+balanced     20 games: won 35% · survivors alive 23% (25 of 109) · median first loss day 6.6 · avg score 589 · breaches/game 3.1
+             losses: turned 36, left the group 25, the group scattered 23
+fortress     20 games: won 75% · survivors alive 54% (59 of 109) · median first loss day 16.5 · avg score 732 · breaches/game 0.0
+             losses: left the group 26, turned 14, the group scattered 9, killed by infected 1
+hoard_water  20 games: won 35% · survivors alive 17% (19 of 110) · median first loss day 8.5 · avg score 517 · breaches/game 2.1
+             losses: turned 35, the group scattered 27, left the group 25, arterial bleed 4
+keep_moving  20 games: won 15% · survivors alive 8% (9 of 106) · median first loss day 8.3 · avg score 401 · breaches/game 3.6
+             losses: turned 37, the group scattered 32, left the group 23, arterial bleed 2, killed by infected 2, killed when the base was overrun 1
