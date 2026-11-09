@@ -53,7 +53,7 @@ You need Godot 4.3 or later; the game is built and tested on 4.7.2. Run every co
 | One run with no UI, told as a story | `godot --headless --script res://tools/headless_runner.gd -- --difficulty=normal --seed=7 --days=30 --strategy=balanced --verbose=1` |
 | Balance batch (auto-player) | `godot --headless --script res://tools/headless_runner.gd -- --games=40 --difficulty=all --strategy=all` |
 
-- **Test suites:** `test_milestone_1`…`6`, `test_difficulty`, `test_stabilize` and `test_ui`.
+- **Test suites:** `test_milestone_1`…`6`, `test_difficulty`, `test_stabilize`, `test_ui` and `test_tutorial`.
 - **Strategies:** `balanced`, `fortress`, `hoard_water`, `keep_moving` or `all`.
 - **Balance batch timing:** 20 games per cell takes about 10 minutes, and 40 per cell about 20.
 
@@ -72,6 +72,7 @@ Use `godot res://tools/screenshot.tscn -- [options] --out=/path/shot.png`.
 | `--menu=pause\|load\|settings` | Opens that menu |
 | `--overlay=noise\|light\|smell\|attention\|disease` | Map layer |
 | `--decide-later=1` / `--hints=0` | Puts waiting decisions aside / hides the tip card |
+| `--open=guide` / `--guide=1` | Shows the How to play guide / opens it the way a first run does (shots skip it otherwise) |
 | `--zoom=3` | Zooms in on the base |
 | `--rain=1` | Shows rain (visual only) |
 | `--generator=1` | Gives the group a running generator (for night shots) |
@@ -471,6 +472,7 @@ On Hard these drop sharply.
   - speed: Pause, 1× (a day in 72 s), 3×, 10×
   - power, taps and phones status
   - **Alerts** (red when urgent; click for the list and auto-pause choices)
+  - **Guide** (H): the How to play pages
   - `?` for keys, Panel to hide the side panel, Menu
 - **Map:**
   - drawn from the sprite sheet, lit by the time of day (cool dawn, harsh noon, golden dusk, dark night)
@@ -503,10 +505,17 @@ On Hard these drop sharply.
 | Esc | menu (save, load, settings, new run) |
 | Ctrl+S | quick save |
 | Ctrl+L | load |
+| H | How to play guide |
 | ? | all keys |
 
+**Learning the game** (all text is in `data/tutorial.json`; code in `ui/tutorial.gd`, `hints.gd`, `getting_started.gd`, `guide.gd`):
+- **How to play guide:** nine short pages (goal, time, map, jobs, scavenging, stores, base, bodies and minds, first-days tips). It opens by itself on the first run on an install, and on H, the Guide button, the pause menu and the start screen. Opening it pauses the game.
+- **Getting started list:** five first-day steps on the map, ticked off as you do them (use the clock, click a building, plan a trip, set a night guard, open Stores). Hide it, or it goes away when finished.
+- **Tips:** one card at a time, bottom right of the map, each shown once. They fire on events (first night, taps failing, first bite, first death, first attack…), on opening a side tab, selecting a building, opening the planner, switching a map layer, and on Days 3, 10 and 25. Several at once wait in a queue. "Got it" remembers; "No more tips" turns them off.
+- Settings keeps what you have seen; "Show the tips and the Getting started list again" resets it, and the guide opens again on the next run.
+
 **Settings** (Esc → Settings), in four tabs:
-- **General:** interface size, 80–150%; show the first-day hints again
+- **General:** interface size, 80–150%; show the tips and the Getting started list again
 - **Alerts:** which alerts pause the game
 - **Graphics:** quality Low / Medium / High, or each of lights, shadows, particles and screen effects on its own; Reduce motion
 - **Audio:** volumes for master, music (none yet), ambience, sound effects and interface

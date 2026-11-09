@@ -3,7 +3,7 @@ extends Node
 ## godot res://tools/screenshot.tscn -- --difficulty=normal --seed=42 --hours=30 --tab=0 --out=/tmp/shot.png
 ## Without --difficulty the shot shows the start screen. --menu=pause|load opens a menu,
 ## --decide-later=1 puts waiting decisions aside, --hints=0 hides the tip card,
-## --overlay=noise (etc.) picks the map overlay.
+## --overlay=noise (etc.) picks the map overlay, --open=guide shows the How to play guide.
 ## Used to check the UI without clicking through it by hand.
 
 const SimRun := preload("res://core/sim_run.gd")
@@ -34,6 +34,10 @@ func _ready() -> void:
 	var quality: String = _string_arg("quality", "")
 	if quality != "":
 		load("res://ui/settings.gd").overrides["graphics/preset"] = quality
+	# Shots never change the player's settings, and skip the first-run guide unless --guide=1.
+	load("res://ui/settings.gd").persist = false
+	if _string_arg("guide", "") != "1":
+		load("res://ui/settings.gd").overrides["hints/guide_seen"] = true
 	var main: Node = load("res://main.tscn").instantiate()
 	main.set("autosave_enabled", false)
 	_viewport.add_child(main)
@@ -69,6 +73,8 @@ func _ready() -> void:
 			panel.call("toggle")
 		"shortcuts":
 			_hud.get("shortcuts").call("toggle")
+		"guide":
+			_hud.call("open_guide")
 		"move":
 			_hud.call("_confirm_move", building)
 		"end":

@@ -46,9 +46,19 @@ static func value(section: String, key: String, fallback: Variant) -> Variant:
 	return _config().get_value(section, key, fallback)
 
 
+## Headless runs (tests) and the screenshot tool change settings in memory only,
+## so they never touch the player's own settings file.
+static var persist: bool = DisplayServer.get_name() != "headless"
+
+
 static func store(section: String, key: String, data: Variant) -> void:
 	_config().set_value(section, key, data)
-	_config().save(PATH)
+	_save()
+
+
+static func _save() -> void:
+	if persist:
+		_config().save(PATH)
 
 
 static func ui_scale() -> float:
@@ -84,7 +94,7 @@ static func dismiss_hint(id: String) -> void:
 static func reset_hints() -> void:
 	if _config().has_section("hints"):
 		_config().erase_section("hints")
-		_config().save(PATH)
+		_save()
 
 
 # --- Graphics ---
@@ -99,7 +109,7 @@ static func set_quality_preset(preset: String) -> void:
 	for key: String in GRAPHICS_TOGGLES:
 		if _config().has_section_key("graphics", key):
 			_config().erase_section_key("graphics", key)
-	_config().save(PATH)
+	_save()
 	changed()
 
 

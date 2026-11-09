@@ -5,6 +5,7 @@ extends PanelContainer
 
 signal new_run_requested
 signal load_requested(path: String)
+signal guide_requested
 
 const SaveGame := preload("res://core/save_game.gd")
 const Settings := preload("res://ui/settings.gd")
@@ -33,6 +34,9 @@ func open_pause() -> void:
 		var slot: String = "save_" + Time.get_datetime_string_from_system(false, true).replace(":", "-").replace(" ", "_")
 		_message.text = "Saved." if SaveGame.save(slot) != "" else "Could not save; see the log.")
 	_add_button("Load…", open_load)
+	_add_button("How to play…", func() -> void:
+		close()
+		guide_requested.emit())
 	_add_button("Settings…", open_settings)
 	_add_button("New run…", func() -> void:
 		close()
@@ -124,11 +128,11 @@ func _settings_general() -> Control:
 	_slider(box, "Interface size: %d%%", Settings.MIN_SCALE * 100.0, Settings.MAX_SCALE * 100.0, 10.0, Settings.ui_scale() * 100.0,
 		func(v: float) -> void: Settings.set_ui_scale(v / 100.0, get_tree()))
 	var hints: Button = Button.new()
-	hints.text = "Show the first-day hints again"
+	hints.text = "Show the tips and the Getting started list again"
 	hints.focus_mode = Control.FOCUS_NONE
 	hints.pressed.connect(func() -> void:
 		Settings.reset_hints()
-		_message.text = "Hints will show again.")
+		_message.text = "Tips will show again.")
 	box.add_child(hints)
 	return box
 

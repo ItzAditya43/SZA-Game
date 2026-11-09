@@ -26,6 +26,8 @@ const EventLog := preload("res://ui/event_log.gd")
 const StatsPanel := preload("res://ui/stats_panel.gd")
 const Ticker := preload("res://ui/ticker.gd")
 const Hints := preload("res://ui/hints.gd")
+const GettingStarted := preload("res://ui/getting_started.gd")
+const Guide := preload("res://ui/guide.gd")
 const AlertsPanel := preload("res://ui/alerts_panel.gd")
 const DecisionModal := preload("res://ui/decision_modal.gd")
 const Planner := preload("res://ui/scavenge_planner.gd")
@@ -48,6 +50,8 @@ var side: PanelContainer
 var building_panel: BuildingPanel
 var people: PeoplePanel
 var hints: Hints
+var getting_started: GettingStarted
+var guide: Guide
 var alerts_panel: AlertsPanel
 var decision_modal: DecisionModal
 var planner: Planner
@@ -109,6 +113,17 @@ func _ready() -> void:
 		alerts_panel.alerts = _current_alerts()
 		alerts_panel.toggle())
 	top_bar.shortcuts_pressed.connect(func() -> void: shortcuts.toggle())
+	top_bar.guide_pressed.connect(open_guide)
+	top_bar.speed_used.connect(func() -> void: _tutorial("speed_used"))
+	save_menu.guide_requested.connect(open_guide)
+	start_screen.guide_requested.connect(open_guide)
+	ui_state.building_selected.connect(func(id: String) -> void:
+		if id != "":
+			_tutorial("building_selected"))
+	tabs.tab_changed.connect(func(index: int) -> void: _tutorial("tab_" + tabs.get_tab_title(index)))
+	planner.visibility_changed.connect(func() -> void:
+		if planner.visible:
+			_tutorial("planner_opened"))
 	top_bar.menu_pressed.connect(func() -> void:
 		TickLoop.set_speed(TickLoop.Speed.PAUSED)
 		save_menu.open_pause())
@@ -153,6 +168,9 @@ func _build_map_area() -> Control:
 	building_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	building_panel.position = Vector2(-Tokens.SPACE_S, 56)
 	area.add_child(building_panel)
+	getting_started = GettingStarted.new()
+	getting_started.position = Vector2(Tokens.SPACE_S, 56)
+	area.add_child(getting_started)
 	building_panel.anchor_left = 1.0
 	building_panel.anchor_right = 1.0
 	building_panel.offset_right = -Tokens.SPACE_S
@@ -195,13 +213,15 @@ func _build_popups() -> void:
 	start_screen = StartScreen.new()
 	start_screen.visible = false
 	save_menu = SaveMenu.new()
-	for modal: Control in [decision_modal, planner, confirm, shortcuts, end_screen, start_screen, save_menu]:
+	guide = Guide.new()
+	for modal: Control in [decision_modal, planner, confirm, shortcuts, end_screen, start_screen, save_menu, guide]:
 		modal.add_to_group(&"modal")
 		modal.z_index = 11
 		add_child(modal)
 		modal.visibility_changed.connect(_update_backdrop)
 	save_menu.z_index = 12
 	confirm.z_index = 12
+	guide.z_index = 12
 
 
 func _update_backdrop() -> void:
@@ -216,7 +236,29 @@ func modal_open() -> bool:
 	return false
 
 
+## Opens the How to play guide, pausing the game while it is read.
+func open_guide() -> void:
+	TickLoop.set_speed(TickLoop.Speed.PAUSED)
+	guide.open()
+
+
+## The guide opens once, on the first run a player starts. Deferred so the caller has set
+## the speed (it stays paused) and the start screen has opened (launch starts a backdrop world).
+func _open_first_guide() -> void:
+	if Settings.value("hints", "guide_seen", false) or start_screen.visible:
+		return
+	Settings.store("hints", "guide_seen", true)
+	open_guide()
+
+
+## Routes a UI-side trigger to the tip card and the Getting started list.
+func _tutorial(trigger: String) -> void:
+	hints.notify(trigger)
+	getting_started.notify(trigger)
+
+
 func set_overlay(name: String) -> void:
+	_tutorial("overlay_set")
 	map.set_overlay(name)
 	for key: String in _overlay_buttons:
 		(_overlay_buttons[key] as Button).set_pressed_no_signal(key == name)
@@ -263,6 +305,7 @@ func _on_bus_event(event_name: StringName, payload: Dictionary) -> void:
 			_cues.clear()
 			_alert_ids.clear()
 			ui_state.select_building("")
+			_open_first_guide.call_deferred()
 		&"game_loaded":
 			_cues.clear()
 			for entry: Dictionary in EventBus.event_log:
@@ -287,6 +330,8 @@ func _refresh_alerts() -> void:
 	var alerts: Array = _current_alerts()
 	var worst: String = alerts[0]["tier"] if not alerts.is_empty() else ""
 	top_bar.set_alerts(alerts.size(), worst)
+	if not alerts.is_empty() and WorldState.day() >= 1:
+		_tutorial("alerts_first")
 	var fresh: Dictionary = {}
 	var chime: String = ""
 	for alert: Dictionary in alerts:

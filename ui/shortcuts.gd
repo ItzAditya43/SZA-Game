@@ -7,7 +7,7 @@ const Tokens := preload("res://ui/theme/tokens.gd")
 const KEYS: Array = [
 	["Space", "Pause / resume"], ["1  2  3", "Speed 1× (a day in 72 s), 3×, 10×"], ["Tab", "Show or hide the side panel"],
 	["Esc", "Menu: save, load, settings, new run"], ["Ctrl+S", "Quick save"], ["Ctrl+L", "Load a save"],
-	["?", "This card"], ["Click a building", "See what's inside; plan a trip or move in"],
+	["H", "How to play (the guide)"], ["?", "This card"], ["Click a building", "See what's inside; plan a trip or move in"],
 	["Hover a number", "See what makes it up"], ["Drag a name", "Move someone to another job (job board)"],
 ]
 

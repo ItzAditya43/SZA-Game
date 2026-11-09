@@ -2,11 +2,13 @@ extends PanelContainer
 ## Top bar: clock and phase, date and temperature, speed, the state of power, taps
 ## and phones, the alert counter and the menu. Reads WorldState and TickLoop; its
 ## only effects on the simulation are speed changes and the test event.
-## Keys: Space pause/resume, 1/2/3 speed, T test event, ? shortcuts.
+## Keys: Space pause/resume, 1/2/3 speed, T test event, ? shortcuts, H guide.
 
 signal alerts_pressed
 signal menu_pressed
 signal shortcuts_pressed
+signal guide_pressed
+signal speed_used
 signal panel_toggled
 
 const Kit := preload("res://ui/kit.gd")
@@ -47,6 +49,7 @@ func _ready() -> void:
 	row.add_child(_utilities)
 	_alerts = Kit.button("Alerts", func() -> void: alerts_pressed.emit(), "Button", "Warnings: what needs attention now")
 	row.add_child(_alerts)
+	row.add_child(Kit.button("Guide", func() -> void: guide_pressed.emit(), "GhostButton", "How to play: the goal, the controls and tips (H)"))
 	row.add_child(Kit.button("?", func() -> void: shortcuts_pressed.emit(), "GhostButton", "Keyboard shortcuts (?)"))
 	row.add_child(Kit.button("Panel", func() -> void: panel_toggled.emit(), "GhostButton", "Show or hide the side panel (Tab)"))
 	row.add_child(Kit.button("Menu", func() -> void: menu_pressed.emit(), "GhostButton", "Save, load, settings, new run (Esc)"))
@@ -73,16 +76,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_SPACE:
 			TickLoop.toggle_pause()
+			speed_used.emit()
 		KEY_1:
 			TickLoop.set_speed(TickLoop.Speed.X1)
+			speed_used.emit()
 		KEY_2:
 			TickLoop.set_speed(TickLoop.Speed.X3)
+			speed_used.emit()
 		KEY_3:
 			TickLoop.set_speed(TickLoop.Speed.X10)
+			speed_used.emit()
 		KEY_T:
 			EventBus.emit_event(&"test_event", {"source": "ui"})
 		KEY_TAB:
 			panel_toggled.emit()
+		KEY_H:
+			guide_pressed.emit()
 		KEY_SLASH, KEY_QUESTION:
 			shortcuts_pressed.emit()
 		_:
@@ -91,6 +100,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _on_speed_pressed(speed: TickLoop.Speed) -> void:
+	speed_used.emit()
 	TickLoop.set_speed(speed)
 	_refresh_speed()
 

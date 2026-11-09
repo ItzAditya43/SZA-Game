@@ -60,7 +60,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if key == null or not key.pressed or key.echo:
 		return
 	if key.keycode == KEY_ESCAPE:
-		if hud.save_menu.visible:
+		if hud.guide.visible:
+			hud.guide.close()
+		elif hud.save_menu.visible:
 			hud.save_menu.close()
 		elif not hud.modal_open():
 			TickLoop.set_speed(TickLoop.Speed.PAUSED)

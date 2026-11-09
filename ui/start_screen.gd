@@ -8,6 +8,7 @@ extends PanelContainer
 signal start_requested(difficulty: String, run_seed: int, roster: Array)
 signal continue_requested
 signal load_list_requested
+signal guide_requested
 
 const Difficulty := preload("res://core/difficulty.gd")
 const SaveGame := preload("res://core/save_game.gd")
@@ -54,6 +55,7 @@ func _ready() -> void:
 		continue_requested.emit())
 	saves_row.add_child(_continue)
 	saves_row.add_child(_button("Load…", func() -> void: load_list_requested.emit()))
+	saves_row.add_child(_button("How to play", func() -> void: guide_requested.emit()))
 
 	var row: HBoxContainer = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
